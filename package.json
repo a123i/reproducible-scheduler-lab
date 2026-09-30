@@ -1,0 +1,14 @@
+{
+  "name": "reproducible-scheduler-lab",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A deterministic, dependency-free scheduling simulation environment.",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test",
+    "demo": "node src/cli.mjs examples/tiny.json"
+  }
+}
