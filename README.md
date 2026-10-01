@@ -1,6 +1,6 @@
 # Reproducible Scheduler Lab
 
-可复现的任务调度仿真项目，用来比较调度规则、核验指标，并保留可重跑的实验结果。首日范围是一个确定性的单 worker、非抢占调度环境及命令行入口。后续一周逐步增加策略、工作负载和实验工具，具体计划见 [7 日路线图](docs/ROADMAP.md)。
+可复现的任务调度仿真项目，用来比较调度规则、核验指标，并保留可重跑的实验结果。目前提供确定性的单 worker、非抢占调度环境、FIFO/SJF 基准策略、命令行入口和等待时间公平性核验。后续逐步增加工作负载和实验工具，具体计划见 [7 日路线图](docs/ROADMAP.md)。
 
 项目采用 Node.js ESM 和内置测试工具，无第三方运行或测试依赖。运行、测试不需要下载包或联网。
 
@@ -12,9 +12,11 @@
 npm test
 npm run demo
 node src/cli.mjs examples/tiny.json --policy fifo
+node src/cli.mjs examples/tiny.json --policy sjf
+node src/cli.mjs examples/fairness-tradeoff.json --policy sjf
 ```
 
-无需执行 `npm install`。首日命令行支持 FIFO；后续策略在实现并验收后才列入可用功能。
+无需执行 `npm install`。命令行支持 `--policy fifo`（默认）与 `--policy sjf`。未知策略会返回非零退出码。
 
 ## 调度规则
 
@@ -26,7 +28,7 @@ node src/cli.mjs examples/tiny.json --policy fifo
 - 单步 reward 为本次任务等待时间的负值：`-(start - release)`。累计 reward 对应总等待时间的负值。
 - 全部任务执行完成后，`terminated` 为 `true`。
 
-reward 只表示等待时间目标。它不单独代表公平性、吞吐能力或所有场景下的策略质量；后续实验会同时比较其他指标。
+reward 只表示等待时间目标。它不单独代表公平性、吞吐能力或所有场景下的策略质量；应同时查看每任务等待和最大等待，不能只看平均值。
 
 ## 输入格式与例子
 
@@ -87,24 +89,70 @@ console.log(observation, result);
 }
 ```
 
-`transition` 包含 `id`、`start`、`finish`、`waiting`、`turnaround`。`metrics` 提供 `completedTasks`、`makespan`、`totalWaiting`、`meanWaiting`、`totalTurnaround`、`meanTurnaround`、`busyTime`、`idleTime`、`utilization`。
+`transition` 包含 `id`、`start`、`finish`、`waiting`、`turnaround`。`metrics` 提供 `completedTasks`、`makespan`、`totalWaiting`、`meanWaiting`、`maxWaiting`、`totalTurnaround`、`meanTurnaround`、`busyTime`、`idleTime`、`utilization`。
 
-`makespan` 为当前环境时间，包含已经自动推进的 idle 间隔；`busyTime` 为已完成任务的执行时长之和。直接调用 API 时，调用者负责从就绪任务中选择动作；CLI 使用已实现的策略完成整个工作负载。
+`makespan` 为当前环境时间，包含已经自动推进的 idle 间隔；`busyTime` 为已完成任务的执行时长之和。等待与 turnaround 指标只统计已完成任务。`maxWaiting` 为其中最大的 `waiting`，没有完成任务时为 0，不代表就绪或未释放任务的实时等待上界。每任务等待保留在 `transition.waiting` 和 `schedule[].waiting`，不在指标内重复存储。
+
+`env.getMetrics()` 可在 reset 后、空输入或运行中获取相同定义的独立指标快照。初始自动 idle 会计入 `makespan` 和 `idleTime`，即使尚无完成任务。直接调用 API 时，调用者负责从就绪任务中选择动作。
+
+## 共享策略与完整运行 API
+
+`src/policies.mjs` 导出 `fifo(observation)`、`sjf(observation)`、`getPolicy(name)` 和只读 `policyNames`：
+
+- 输入为 `SchedulingEnv` 返回的有效观察；策略仅选择 `ready` 中的任务，不查看 `pending` 来提前空闲，也不修改观察
+- 输出是一个就绪任务 ID；`terminated` 时返回 `null`，调用者不能将它传给 `step`
+- 非终止但 `ready` 为空的观察不符合内核约定，策略会抛出错误
+- FIFO 比较 `(release, id)`；SJF 比较 `(duration, release, id)`。ID 使用共享的 Unicode 代码点比较，不受语言设置、输入数组或 ready 数组顺序影响
+- SJF 使用输入中已知的完整 duration，属于离线仿真的已知时长基准；它不会抢占正在运行的任务
+
+`src/run.mjs` 导出与 CLI 共用的运行器：
+
+```js
+import { runSchedule } from './src/run.mjs';
+import { sjf } from './src/policies.mjs';
+
+const result = runSchedule(workload, 'sjf'); // 省略策略则使用 FIFO
+console.log(result.policy, result.schedule, result.metrics);
+
+// 也可以逐步使用共享接口：
+let observation = env.reset();
+while (!observation.terminated) {
+  observation = env.step(sjf(observation)).observation;
+}
+```
+
+运行器返回 `{ schemaVersion: 1, policy, schedule, metrics }`，不修改 workload。空输入返回空 schedule 和全零指标。`maxWaiting` 是版本 1 输出中新增加的字段，原有指标、FIFO 顺序和输入格式保持兼容。
+
+## 比较基准与公平性
+
+```sh
+node src/cli.mjs examples/policy-comparison.json --policy fifo
+node src/cli.mjs examples/policy-comparison.json --policy sjf
+node src/cli.mjs examples/fairness-tradeoff.json --policy fifo
+node src/cli.mjs examples/fairness-tradeoff.json --policy sjf
+```
+
+同时到达的 `policy-comparison.json` 中，FIFO 顺序为 A/B/C，总等待 11、最大等待 6；SJF 为 B/C/A，总等待 4、最大等待 3。
+
+错开到达的 `fairness-tradeoff.json` 中，SJF 将平均等待从 `22/6` 降到 `14/6`，但最大等待从 **5 增至 6**，长任务等待从 **2 增至 6**。两者结束时间均为 10。这说明平均等待改善并不保证个体等待或最坏等待改善。
+
+完整手算时间线、指标和局限见 [基准核验](docs/BASELINES.md)。这些有限输入不证明某种策略在任意到达模式下最优；本仿真也没有持续无限到达，不能将有限等待示例称为已观测到无限饥饿。
 
 ## 目录
 
 ```text
-src/             调度环境与 CLI
-examples/        最小可复现输入
+src/             调度环境、共享策略、运行器与 CLI
+examples/        最小输入和手算策略/公平性 fixtures
 test/            Node.js 内置测试
 docs/ROADMAP.md  7 日依赖与验收计划
 docs/HANDOFF.md  实际状态、缺项和下一次恢复步骤
+docs/BASELINES.md 手算基准、指标与公平性权衡
 ```
 
 ## 当前范围与后续工作
 
-首日交付范围是调度内核、FIFO CLI、最小示例、基础测试和文档。实际验收、commit 与 push 状态以 [交接记录](docs/HANDOFF.md) 为准。
+Day 1–2 已实现调度内核、FIFO/SJF 共享策略与 CLI、最大等待指标、手算示例、测试和文档。实际验收、commit 与 push 状态以 [交接记录](docs/HANDOFF.md) 为准。
 
-基准策略比较、固定 seed 生成器、批实验、可扩展策略接口和最终报告属于后续计划，尚不能当作现有功能。此项目没有训练结果，也不承诺某种策略会在所有工作负载上胜出。
+固定 seed 生成器、批实验、加权等待策略和最终报告属于后续计划，尚不能当作现有功能。此项目没有训练结果，也不承诺某种策略会在所有工作负载上胜出。
 
 开发记录只包含实际完成的工作和实际执行的测试。每日提交需要当天存在有意义且通过验收的改动；不使用空提交、回填日期或虚构工时补齐计划。公开发布仅包含本项目代码、测试、示例与文档。

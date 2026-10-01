@@ -22,6 +22,7 @@ const finalMetrics = {
   makespan: 9,
   totalWaiting: 2,
   meanWaiting: 2 / 3,
+  maxWaiting: 2,
   totalTurnaround: 8,
   meanTurnaround: 8 / 3,
   busyTime: 6,
@@ -213,7 +214,7 @@ test('a policy may choose any ready task and execution remains nonpreemptive', (
     id: 'arriving', start: 5, finish: 6, waiting: 3, turnaround: 4,
   });
   assert.deepEqual(last.info.metrics, {
-    completedTasks: 3, makespan: 6, totalWaiting: 4, meanWaiting: 4 / 3,
+    completedTasks: 3, makespan: 6, totalWaiting: 4, meanWaiting: 4 / 3, maxWaiting: 3,
     totalTurnaround: 10, meanTurnaround: 10 / 3, busyTime: 6, idleTime: 0, utilization: 1,
   });
 });
@@ -283,4 +284,33 @@ test('reset can repeat a partially or fully completed episode deterministically'
   const firstRun = run();
   assert.deepEqual(env.reset(), original);
   assert.deepEqual(run(), firstRun);
+});
+
+test('getMetrics returns isolated completed-task fairness metrics before and during an episode', () => {
+  const env = new SchedulingEnv({ schemaVersion: 1, tasks: [
+    { id: 'A', release: 2, duration: 3 },
+    { id: 'B', release: 2, duration: 1 },
+    { id: 'C', release: 2, duration: 1 },
+  ] });
+  const initial = env.getMetrics();
+  assert.deepEqual(initial, {
+    completedTasks: 0, makespan: 2, totalWaiting: 0, meanWaiting: 0, maxWaiting: 0,
+    totalTurnaround: 0, meanTurnaround: 0, busyTime: 0, idleTime: 2, utilization: 0,
+  });
+  assert.equal(env.step('A').info.metrics.maxWaiting, 0);
+  assert.equal(env.step('B').info.metrics.maxWaiting, 3);
+  const snapshot = env.getMetrics();
+  snapshot.maxWaiting = 999;
+  assert.equal(env.step('C').info.metrics.maxWaiting, 4);
+  assert.equal(initial.maxWaiting, 0);
+  assert.equal(initial.completedTasks, 0);
+  env.reset();
+  assert.deepEqual(env.getMetrics(), initial);
+});
+
+test('maxWaiting remains the largest completed wait rather than the latest wait', () => {
+  const env = new SchedulingEnv(tiny());
+  env.step('A');
+  assert.equal(env.step('B').info.metrics.maxWaiting, 2);
+  assert.equal(env.step('C').info.metrics.maxWaiting, 2);
 });

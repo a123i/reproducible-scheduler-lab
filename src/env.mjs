@@ -1,3 +1,5 @@
+import { compareTasks } from './order.mjs';
+
 /**
  * Validate and copy a versioned workload. All simulation times are exact safe
  * integers. Conservative horizon and aggregate bounds protect every task order.
@@ -56,22 +58,6 @@ export function validateWorkload(workload) {
   return { schemaVersion: 1, tasks };
 }
 
-// Unicode code-point tie breaking, independent of locale and input file order.
-function compareIds(left, right) {
-  const leftPoints = Array.from(left, (character) => character.codePointAt(0));
-  const rightPoints = Array.from(right, (character) => character.codePointAt(0));
-  for (let index = 0; index < Math.min(leftPoints.length, rightPoints.length); index += 1) {
-    if (leftPoints[index] !== rightPoints[index]) return leftPoints[index] - rightPoints[index];
-  }
-  return leftPoints.length - rightPoints.length;
-}
-
-// No random or clock input enters the kernel.
-function compareTasks(left, right) {
-  if (left.release !== right.release) return left.release - right.release;
-  return compareIds(left.id, right.id);
-}
-
 /** Single worker, nonpreemptive scheduling with event-driven idle advancement. */
 export class SchedulingEnv {
   #tasks;
@@ -119,7 +105,7 @@ export class SchedulingEnv {
       observation,
       reward: transition.waiting === 0 ? 0 : -transition.waiting,
       terminated: observation.terminated,
-      info: { transition: { ...transition }, metrics: this.#metrics() },
+      info: { transition: { ...transition }, metrics: this.getMetrics() },
     };
   }
 
@@ -141,9 +127,11 @@ export class SchedulingEnv {
     };
   }
 
-  #metrics() {
+  /** Metrics for completed tasks only; returns an independent snapshot. */
+  getMetrics() {
     const completedTasks = this.#completed.length;
     const totalWaiting = this.#completed.reduce((total, task) => total + task.waiting, 0);
+    const maxWaiting = this.#completed.reduce((maximum, task) => Math.max(maximum, task.waiting), 0);
     const totalTurnaround = this.#completed.reduce((total, task) => total + task.turnaround, 0);
     const busyTime = this.#completed.reduce((total, task) => total + (task.finish - task.start), 0);
     const makespan = this.#time;
@@ -152,6 +140,7 @@ export class SchedulingEnv {
       makespan,
       totalWaiting,
       meanWaiting: completedTasks ? totalWaiting / completedTasks : 0,
+      maxWaiting,
       totalTurnaround,
       meanTurnaround: completedTasks ? totalTurnaround / completedTasks : 0,
       busyTime,

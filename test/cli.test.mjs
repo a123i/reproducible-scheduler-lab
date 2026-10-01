@@ -48,7 +48,7 @@ test('CLI runs the checked-in tiny workload with exact FIFO output', () => {
       { id: 'C', start: 8, finish: 9, waiting: 0, turnaround: 1 },
     ],
     metrics: {
-      completedTasks: 3, makespan: 9, totalWaiting: 2, meanWaiting: 2 / 3,
+      completedTasks: 3, makespan: 9, totalWaiting: 2, meanWaiting: 2 / 3, maxWaiting: 2,
       totalTurnaround: 8, meanTurnaround: 8 / 3, busyTime: 6, idleTime: 3, utilization: 2 / 3,
     },
   });
@@ -91,7 +91,7 @@ test('CLI reports all-zero metrics for an empty workload', (t) => {
     policy: 'fifo',
     schedule: [],
     metrics: {
-      completedTasks: 0, makespan: 0, totalWaiting: 0, meanWaiting: 0,
+      completedTasks: 0, makespan: 0, totalWaiting: 0, meanWaiting: 0, maxWaiting: 0,
       totalTurnaround: 0, meanTurnaround: 0, busyTime: 0, idleTime: 0, utilization: 0,
     },
   });
@@ -148,4 +148,35 @@ test('invalid task diagnostics cannot emit ID-supplied terminal control sequence
     assert.doesNotMatch(result.stderr, /[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/);
     assert.equal(result.stderr.trim().split(/\r?\n/).length, 1);
   }
+});
+
+test('SJF CLI selects the shortest ready task and reports the hand-calculated metrics', () => {
+  const path = fileURLToPath(new URL('../examples/policy-comparison.json', import.meta.url));
+  const result = run([path, '--policy', 'sjf']);
+  assert.equal(result.status, 0);
+  assert.equal(result.stderr, '');
+  const output = JSON.parse(result.stdout);
+  assert.equal(output.policy, 'sjf');
+  assert.deepEqual(output.schedule.map(({ id }) => id), ['B', 'C', 'A']);
+  assert.equal(output.metrics.totalWaiting, 4);
+  assert.equal(output.metrics.maxWaiting, 3);
+  assert.equal(run([path, '--policy', 'sjf']).stdout, result.stdout);
+});
+
+test('SJF CLI handles empty input and tiny idle intervals', (t) => {
+  const empty = run([fixture(t, { schemaVersion: 1, tasks: [] }), '--policy', 'sjf']);
+  assert.equal(empty.status, 0);
+  const result = JSON.parse(empty.stdout);
+  assert.equal(result.policy, 'sjf');
+  assert.deepEqual(result.schedule, []);
+  assert.ok(Object.values(result.metrics).every((value) => value === 0));
+  const tiny = run([examplePath, '--policy', 'sjf']);
+  assert.equal(tiny.status, 0);
+  assert.equal(JSON.parse(tiny.stdout).metrics.idleTime, 3);
+});
+
+test('unknown policy names cannot emit terminal control sequences', () => {
+  const result = run([examplePath, '--policy', 'evil\n\u001b[2J']);
+  assertFriendlyError(result);
+  assert.doesNotMatch(result.stderr, /[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/);
 });

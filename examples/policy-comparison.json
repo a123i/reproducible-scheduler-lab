@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "tasks": [
+    { "id": "A", "release": 0, "duration": 5 },
+    { "id": "B", "release": 0, "duration": 1 },
+    { "id": "C", "release": 0, "duration": 2 }
+  ]
+}
