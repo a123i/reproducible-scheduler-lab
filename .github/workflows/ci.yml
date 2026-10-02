@@ -24,3 +24,8 @@ jobs:
       - run: npm test
       - run: node src/cli.mjs examples/tiny.json
       - run: node src/cli.mjs examples/fairness-tradeoff.json --policy sjf
+      - name: Regenerate and schedule a fixed-seed workload
+        run: |
+          node src/generate.mjs examples/generator/high-load.json > "$RUNNER_TEMP/high-load.json"
+          cmp examples/generated/high-load.json "$RUNNER_TEMP/high-load.json"
+          node src/cli.mjs "$RUNNER_TEMP/high-load.json" --policy sjf

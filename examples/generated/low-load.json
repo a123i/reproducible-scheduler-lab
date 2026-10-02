@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 1,
+  "generation": {
+    "generator": "lcg32-workload-v1",
+    "seed": 20261002,
+    "parameters": {
+      "taskCount": 12,
+      "initialRelease": 0,
+      "duration": {
+        "min": 2,
+        "max": 6
+      },
+      "arrivalGap": {
+        "min": 8,
+        "max": 12
+      },
+      "burstSize": 1,
+      "burstGap": 0
+    }
+  },
+  "tasks": [
+    {
+      "id": "task-000001",
+      "release": 0,
+      "duration": 4
+    },
+    {
+      "id": "task-000002",
+      "release": 10,
+      "duration": 4
+    },
+    {
+      "id": "task-000003",
+      "release": 19,
+      "duration": 4
+    },
+    {
+      "id": "task-000004",
+      "release": 31,
+      "duration": 4
+    },
+    {
+      "id": "task-000005",
+      "release": 42,
+      "duration": 6
+    },
+    {
+      "id": "task-000006",
+      "release": 53,
+      "duration": 2
+    },
+    {
+      "id": "task-000007",
+      "release": 63,
+      "duration": 2
+    },
+    {
+      "id": "task-000008",
+      "release": 74,
+      "duration": 3
+    },
+    {
+      "id": "task-000009",
+      "release": 85,
+      "duration": 4
+    },
+    {
+      "id": "task-000010",
+      "release": 97,
+      "duration": 5
+    },
+    {
+      "id": "task-000011",
+      "release": 108,
+      "duration": 3
+    },
+    {
+      "id": "task-000012",
+      "release": 119,
+      "duration": 3
+    }
+  ]
+}

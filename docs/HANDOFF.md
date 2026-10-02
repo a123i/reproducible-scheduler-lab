@@ -86,3 +86,32 @@ CI 的官方 checkout/setup-node v7 操作已锁定到已核验的完整提交 S
 当前未解决功能阻塞：无。Day 3–Day 7 尚未实现；没有训练、批实验或固定 seed 生成器。SJF 使用已知时长，只比较有限 workload，不保证全部到达模式下最优或最公平。
 
 下一次第一步：检查远程 `main` 和 CI，核验 Day 2 实际 SHA 与两个 Node.js 作业；如已成功，再按 ROADMAP 的 Day 3 实现固定 seed 生成器、参数记录、不同负载/突发/空闲 fixtures 与可复现性测试。若发布失败则保留真实失败状态，先恢复本阶段发布，不能重复制造同一增量或空提交。
+
+## Day 3 验收快照
+
+- 实际日期/时区：2026-10-02（UTC），Day 3 功能发布前；前面的 Day 1/2 记录保留为历史快照
+- 恢复检查：云端既有 checkout 的 `main` 与公开远程一致，起点为 `c1e9e206c66113988b1aa4c2e37f396e77138949`，工作区干净；没有仓库级 AGENTS.md 或附加技能文件
+- Day 2 发布核验：远程提交历史已确认上述 SHA；[CI run 36837025245](https://github.com/a123i/reproducible-scheduler-lab/actions/runs/36837025245) 为 completed/success，`test (22)` 与 `test (24)` 均成功。本次修改前重跑 76 项测试全部通过
+- 完成的行为：`src/random.mjs` 提供局部状态、显式 uint32 seed、整数高位分桶和拒绝采样；`src/workload.mjs` 提供完整参数校验、最坏情况 BigInt 安全界、生成与版本化元数据重放；`src/generate.mjs` 提供独立 JSON 配置到 stdout 的 CLI
+- 生成输出保留 `lcg32-workload-v1`、seed、全部规范化参数和稳定 ID；不引入时间戳、随机 UUID、第三方依赖或联网要求；既有手写输入与调度 CLI 保持兼容
+- 四组固定配置和生成输入位于 `examples/generator/`、`examples/generated/`：low-load、high-load、bursty、idle-gaps，均可直接通过 FIFO/SJF CLI 运行
+- 新增 PRNG/生成器/CLI 测试与 [WORKLOADS.md](WORKLOADS.md)；更新 README、路线图及 CI 的字节级再生成 smoke 检查
+- 实际云端环境：Node.js 24.19.0、npm 11.9.0；npm 提示已有 http-proxy 环境配置的弃用警告，不影响退出状态。本地没有单独运行 Node.js 22，以发布后对应 SHA 的 CI 为准
+- 未计时，不填写工时
+
+| 项目 | 实际执行与结果 |
+| --- | --- |
+| 完整测试 | `npm test`：121 项通过，0 失败，0 skipped，退出码 0 |
+| 兼容示例 | `npm run demo` 成功，既有 tiny 的 makespan 9、totalWaiting 2、maxWaiting 2、busyTime 6、idleTime 3 保持不变 |
+| 四组生成 | 对四个配置分别运行 `node src/generate.mjs`，用 `cmp` 核验与已提交 fixture 字节一致，全部成功 |
+| 八组调度 | 四个生成输入各执行 FIFO/SJF CLI，8 条命令均退出码 0；指标符合 WORKLOADS 固定样本表 |
+| JavaScript 语法 | 对所有 `src/*.mjs`、`test/*.mjs` 执行 `node --check`，全部通过 |
+| 确定性与边界 | 固定 PRNG 向量、BigInt 参考递推、拒绝采样、完整元数据重放、默认参数、空任务、最大计数、非法参数和安全整数边界均有覆盖；100 个 seed 的混合参数集核验两种策略的任务唯一完成、时间和指标不变量 |
+| 独立复核 | 独立重跑 121 项测试通过；另以 BigInt 参考实现核验 800000 次区间取样、10000 组完整生成结果及 1728 组极端参数域校验，均通过，未发现阻塞缺陷 |
+| 格式检查 | `git diff --check` 通过 |
+| 功能 commit / 发布 | 本快照为提交前记录，Day 3 SHA 尚未生成；使用已授权 GitHub tree/commit/ref 接口做非强制快进发布，不将其称为 shell push |
+| 同一 SHA CI | 本快照完成时 Day 3 尚未发布，因此其 CI 未运行；发布后须核对远程相同 SHA 的 Node.js 22/24 检查 |
+
+当前未解决功能阻塞：无。已知限制：LCG 面向固定 fixtures，不保证统计独立性或生产流量代表性；不同 seed 不保证有限样本都不同；burstGap 不是实际 idle 的保证；taskCount 最大 10000，现有环境并未针对大规模性能优化。元数据只描述生成过程，手改 tasks 后不自动校验其来源。完整批实验封装、加权策略与报告仍未实现。
+
+下一次第一步：核验 Day 3 远程 `main` SHA 和 Node.js 22/24 CI；成功后按 ROADMAP Day 4 实现固定输入批比较、逐次原始 JSON 与可重算汇总，保留输入、seed、参数、策略与版本信息。若发布失败先恢复本阶段发布；不要重做 Day 3 或制造空提交。

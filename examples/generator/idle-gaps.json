@@ -1,0 +1,15 @@
+{
+  "seed": 20261002,
+  "taskCount": 12,
+  "duration": {
+    "min": 2,
+    "max": 6
+  },
+  "arrivalGap": {
+    "min": 1,
+    "max": 2
+  },
+  "initialRelease": 5,
+  "burstSize": 3,
+  "burstGap": 30
+}

@@ -1,6 +1,6 @@
 # Reproducible Scheduler Lab
 
-可复现的任务调度仿真项目，用来比较调度规则、核验指标，并保留可重跑的实验结果。目前提供确定性的单 worker、非抢占调度环境、FIFO/SJF 基准策略、命令行入口和等待时间公平性核验。后续逐步增加工作负载和实验工具，具体计划见 [7 日路线图](docs/ROADMAP.md)。
+可复现的任务调度仿真项目，用来比较调度规则、核验指标，并保留可重跑的实验结果。目前提供确定性的单 worker、非抢占调度环境、FIFO/SJF 基准策略、固定 seed 工作负载生成器、命令行入口和等待时间公平性核验。后续逐步增加批实验工具，具体计划见 [7 日路线图](docs/ROADMAP.md)。
 
 项目采用 Node.js ESM 和内置测试工具，无第三方运行或测试依赖。运行、测试不需要下载包或联网。
 
@@ -14,6 +14,8 @@ npm run demo
 node src/cli.mjs examples/tiny.json --policy fifo
 node src/cli.mjs examples/tiny.json --policy sjf
 node src/cli.mjs examples/fairness-tradeoff.json --policy sjf
+node src/generate.mjs examples/generator/high-load.json
+node src/cli.mjs examples/generated/high-load.json --policy sjf
 ```
 
 无需执行 `npm install`。命令行支持 `--policy fifo`（默认）与 `--policy sjf`。未知策略会返回非零退出码。
@@ -138,21 +140,59 @@ node src/cli.mjs examples/fairness-tradeoff.json --policy sjf
 
 完整手算时间线、指标和局限见 [基准核验](docs/BASELINES.md)。这些有限输入不证明某种策略在任意到达模式下最优；本仿真也没有持续无限到达，不能将有限等待示例称为已观测到无限饥饿。
 
+## 固定 seed 工作负载
+
+`src/workload.mjs` 导出 `generateWorkload(options)`、`replayWorkload(generation)` 和 `validateGeneratorOptions(options)`。seed 必须显式给出，范围为 `0`–`4294967295` 的整数；不从时钟或 `Math.random()` 推导 seed。
+
+```js
+import { generateWorkload, replayWorkload } from './src/workload.mjs';
+
+const workload = generateWorkload({
+  seed: 42,
+  taskCount: 12,
+  duration: { min: 2, max: 6 },
+  arrivalGap: { min: 0, max: 1 },
+});
+const replayed = replayWorkload(workload.generation);
+// 相同生成器版本、seed 和参数，得到相同 tasks 与完整 JSON 数据
+```
+
+输出仍是可直接交给调度 CLI 的 schemaVersion 1 workload，额外包含 `generation: { generator, seed, parameters }`。parameters 保存全部默认值，因此重放不依赖调用者记得省略了哪些选项。`replayWorkload` 拒绝未知生成器版本和缺失的参数记录。
+
+四组已提交输入覆盖低负载、高负载、同时到达的突发，以及实际出现的 idle 间隔；对应配置位于 `examples/generator/`，生成结果位于 `examples/generated/`，同名配对：
+
+```sh
+mkdir -p experiments/local
+node src/generate.mjs examples/generator/high-load.json > experiments/local/high-load.json
+node src/cli.mjs experiments/local/high-load.json --policy fifo
+node src/cli.mjs experiments/local/high-load.json --policy sjf
+node src/cli.mjs examples/generated/low-load.json --policy fifo
+node src/cli.mjs examples/generated/bursty.json --policy sjf
+node src/cli.mjs examples/generated/idle-gaps.json --policy fifo
+```
+
+生成 CLI 只向 stdout 写 JSON，不直接修改文件；保存路径由 shell 重定向决定。失败时只向 stderr 写简洁错误并返回退出码 1。以上命令不需要下载依赖或联网。
+
+完整参数、突发间隔语义、伪随机算法和版本规则、固定输入的指标及重跑方法见 [工作负载与复现](docs/WORKLOADS.md)。生成器面向有限的教学与回归仿真，不是密码学随机源，也不宣称这些样本代表真实生产流量。不同 seed 通常产生不同样本，但退化参数或有限样本可能相同。
+
 ## 目录
 
 ```text
-src/             调度环境、共享策略、运行器与 CLI
+src/             调度环境、共享策略、运行器、seed 生成器与两个 CLI
 examples/        最小输入和手算策略/公平性 fixtures
+examples/generator/ 固定 seed 生成配置
+examples/generated/ 可重放的生成输入
 test/            Node.js 内置测试
 docs/ROADMAP.md  7 日依赖与验收计划
 docs/HANDOFF.md  实际状态、缺项和下一次恢复步骤
 docs/BASELINES.md 手算基准、指标与公平性权衡
+docs/WORKLOADS.md 生成协议、参数、场景与复现步骤
 ```
 
 ## 当前范围与后续工作
 
-Day 1–2 已实现调度内核、FIFO/SJF 共享策略与 CLI、最大等待指标、手算示例、测试和文档。实际验收、commit 与 push 状态以 [交接记录](docs/HANDOFF.md) 为准。
+Day 1–3 已实现调度内核、FIFO/SJF 共享策略与 CLI、最大等待指标、手算示例、固定 seed 生成器和场景 fixtures、测试与文档。实际验收、commit 与发布状态以 [交接记录](docs/HANDOFF.md) 为准。
 
-固定 seed 生成器、批实验、加权等待策略和最终报告属于后续计划，尚不能当作现有功能。此项目没有训练结果，也不承诺某种策略会在所有工作负载上胜出。
+批实验、加权等待策略和最终报告属于后续计划，尚不能当作现有功能。此项目没有训练结果，也不承诺某种策略会在所有工作负载上胜出。
 
 开发记录只包含实际完成的工作和实际执行的测试。每日提交需要当天存在有意义且通过验收的改动；不使用空提交、回填日期或虚构工时补齐计划。公开发布仅包含本项目代码、测试、示例与文档。
