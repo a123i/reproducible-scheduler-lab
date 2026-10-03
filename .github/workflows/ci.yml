@@ -29,3 +29,9 @@ jobs:
           node src/generate.mjs examples/generator/high-load.json > "$RUNNER_TEMP/high-load.json"
           cmp examples/generated/high-load.json "$RUNNER_TEMP/high-load.json"
           node src/cli.mjs "$RUNNER_TEMP/high-load.json" --policy sjf
+      - name: Reproduce raw batch results and independently recompute summaries
+        run: |
+          node src/batch.mjs examples/experiments/baselines.json > "$RUNNER_TEMP/baselines.raw.json"
+          cmp examples/experiments/baselines.raw.json "$RUNNER_TEMP/baselines.raw.json"
+          node src/summarize.mjs "$RUNNER_TEMP/baselines.raw.json" > "$RUNNER_TEMP/baselines.summary.json"
+          cmp examples/experiments/baselines.summary.json "$RUNNER_TEMP/baselines.summary.json"

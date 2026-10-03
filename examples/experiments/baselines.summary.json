@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "experimentVersion": "scheduler-experiment-v1",
+  "rawSha256": "2b34ede03aa2bc51529515da863a9abbcd7c0d3b3fd1b11e3bd2a9d921964fe0",
+  "inputCount": 6,
+  "runCount": 12,
+  "metricDefinitions": {
+    "runCount": "Number of input workloads evaluated by this policy, including empty workloads.",
+    "completedTasks": "Sum of completedTasks across this policy's runs.",
+    "totalWaiting": "Sum of totalWaiting across this policy's runs.",
+    "meanWaiting": "totalWaiting / completedTasks; task-weighted, not a mean of run means; zero for no tasks.",
+    "maxWaiting": "Maximum maxWaiting across this policy's runs; zero for no tasks.",
+    "totalTurnaround": "Sum of totalTurnaround across this policy's runs.",
+    "meanTurnaround": "totalTurnaround / completedTasks; task-weighted; zero for no tasks.",
+    "totalMakespan": "Sum of per-run makespan; runs are separate episodes, not one continuous timeline.",
+    "totalBusyTime": "Sum of per-run busyTime.",
+    "totalIdleTime": "Sum of per-run idleTime.",
+    "pooledUtilization": "totalBusyTime / totalMakespan; time-weighted, not a mean of run utilizations; zero for zero horizon."
+  },
+  "policies": [
+    {
+      "policy": "fifo",
+      "runCount": 6,
+      "completedTasks": 57,
+      "totalWaiting": 429,
+      "meanWaiting": 7.526315789473684,
+      "maxWaiting": 33,
+      "totalTurnaround": 623,
+      "meanTurnaround": 10.929824561403509,
+      "totalMakespan": 349,
+      "totalBusyTime": 194,
+      "totalIdleTime": 155,
+      "pooledUtilization": 0.5558739255014327
+    },
+    {
+      "policy": "sjf",
+      "runCount": 6,
+      "completedTasks": 57,
+      "totalWaiting": 325,
+      "meanWaiting": 5.701754385964913,
+      "maxWaiting": 36,
+      "totalTurnaround": 519,
+      "meanTurnaround": 9.105263157894736,
+      "totalMakespan": 349,
+      "totalBusyTime": 194,
+      "totalIdleTime": 155,
+      "pooledUtilization": 0.5558739255014327
+    }
+  ]
+}

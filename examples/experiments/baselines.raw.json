@@ -1,0 +1,1478 @@
+{
+  "schemaVersion": 1,
+  "experimentVersion": "scheduler-experiment-v1",
+  "provenance": {
+    "engine": "single-worker-nonpreemptive-v1",
+    "configuration": {
+      "workerCount": 1,
+      "preemptive": false,
+      "timeUnit": "integer-tick",
+      "idle": "advance-to-next-release",
+      "idTieBreak": "unicode-code-point"
+    },
+    "sourceFilesSha256": {
+      "src/batch.mjs": "8ef729822de2b5d1c5d3cb1e47d0abb4288bab85be320808dfe8f9fde2b35ecb",
+      "src/env.mjs": "f8e0ea861dc57e86febc33ce68b8075ff7b90cbcc8667d5ad7b9ec0ef48388a8",
+      "src/experiment.mjs": "d6862a2e4d39e28c0c6e1e1f33488207513b995e13b2c82250e53f8f6d10f165",
+      "src/order.mjs": "3e1eed9f2160507b33248493c291282db69b6d9725c2cd817bf080ade3f4ea1d",
+      "src/policies.mjs": "6d2e6951194988755e4a4412d27a2178deaf517f671c3b505230a9e194235138",
+      "src/random.mjs": "6867da014bf5d39a0b8e5c1ea747a844b25fc37737811df92b9dbe614a4b1846",
+      "src/run.mjs": "7bb8eea6d4774f82a0f6151b0294d61e0f9320aaf70a0d4bdd3718a5f50018e9",
+      "src/summarize.mjs": "b64db1367baa68a6726d44325a0ce61a2efc147c9f63b22d06e57e992162c743",
+      "src/workload.mjs": "709271a44ef72f72afe44045be94e07e069a063758da4e678eb0c3fed183fa62"
+    }
+  },
+  "metricDefinitions": {
+    "completedTasks": "Number of tasks in the completed schedule.",
+    "makespan": "Final finish time measured from time zero; zero for an empty workload.",
+    "totalWaiting": "Sum of start - release over all tasks.",
+    "meanWaiting": "totalWaiting / completedTasks; zero when completedTasks is zero.",
+    "maxWaiting": "Maximum start - release; zero for an empty workload.",
+    "totalTurnaround": "Sum of finish - release over all tasks.",
+    "meanTurnaround": "totalTurnaround / completedTasks; zero when completedTasks is zero.",
+    "busyTime": "Sum of task duration over all tasks.",
+    "idleTime": "makespan - busyTime; includes idle time before the first release.",
+    "utilization": "busyTime / makespan; zero when makespan is zero."
+  },
+  "policies": [
+    {
+      "name": "fifo",
+      "version": "fifo-v1",
+      "parameters": {}
+    },
+    {
+      "name": "sjf",
+      "version": "sjf-v1",
+      "parameters": {}
+    }
+  ],
+  "inputs": [
+    {
+      "id": "policy-comparison",
+      "sha256": "e9faeb002a830d49e85f650401fa117ca9ef0d82fb261828bb62088f9d1de6a3",
+      "workload": {
+        "schemaVersion": 1,
+        "tasks": [
+          {
+            "id": "A",
+            "release": 0,
+            "duration": 5
+          },
+          {
+            "id": "B",
+            "release": 0,
+            "duration": 1
+          },
+          {
+            "id": "C",
+            "release": 0,
+            "duration": 2
+          }
+        ]
+      }
+    },
+    {
+      "id": "fairness-tradeoff",
+      "sha256": "bc6934bf96231bc376bdbad2830f12b9ac95dc04d8a97453ebbe64ac707dcefe",
+      "workload": {
+        "schemaVersion": 1,
+        "tasks": [
+          {
+            "id": "A",
+            "release": 0,
+            "duration": 3
+          },
+          {
+            "id": "long",
+            "release": 1,
+            "duration": 3
+          },
+          {
+            "id": "short-1",
+            "release": 1,
+            "duration": 1
+          },
+          {
+            "id": "short-2",
+            "release": 2,
+            "duration": 1
+          },
+          {
+            "id": "short-3",
+            "release": 3,
+            "duration": 1
+          },
+          {
+            "id": "short-4",
+            "release": 4,
+            "duration": 1
+          }
+        ]
+      }
+    },
+    {
+      "id": "low-load",
+      "sha256": "9e7946b9b4dfc733a4b6de5e43ed30d5428631ad1e535cd974701367d6a90008",
+      "workload": {
+        "schemaVersion": 1,
+        "generation": {
+          "generator": "lcg32-workload-v1",
+          "seed": 20261002,
+          "parameters": {
+            "taskCount": 12,
+            "initialRelease": 0,
+            "duration": {
+              "min": 2,
+              "max": 6
+            },
+            "arrivalGap": {
+              "min": 8,
+              "max": 12
+            },
+            "burstSize": 1,
+            "burstGap": 0
+          }
+        },
+        "tasks": [
+          {
+            "id": "task-000001",
+            "release": 0,
+            "duration": 4
+          },
+          {
+            "id": "task-000002",
+            "release": 10,
+            "duration": 4
+          },
+          {
+            "id": "task-000003",
+            "release": 19,
+            "duration": 4
+          },
+          {
+            "id": "task-000004",
+            "release": 31,
+            "duration": 4
+          },
+          {
+            "id": "task-000005",
+            "release": 42,
+            "duration": 6
+          },
+          {
+            "id": "task-000006",
+            "release": 53,
+            "duration": 2
+          },
+          {
+            "id": "task-000007",
+            "release": 63,
+            "duration": 2
+          },
+          {
+            "id": "task-000008",
+            "release": 74,
+            "duration": 3
+          },
+          {
+            "id": "task-000009",
+            "release": 85,
+            "duration": 4
+          },
+          {
+            "id": "task-000010",
+            "release": 97,
+            "duration": 5
+          },
+          {
+            "id": "task-000011",
+            "release": 108,
+            "duration": 3
+          },
+          {
+            "id": "task-000012",
+            "release": 119,
+            "duration": 3
+          }
+        ]
+      }
+    },
+    {
+      "id": "high-load",
+      "sha256": "b884fdd695c5eb2c61e4a549f86897601ad75eb6d55fec42d9eaf73fc51180ce",
+      "workload": {
+        "schemaVersion": 1,
+        "generation": {
+          "generator": "lcg32-workload-v1",
+          "seed": 20261002,
+          "parameters": {
+            "taskCount": 12,
+            "initialRelease": 0,
+            "duration": {
+              "min": 2,
+              "max": 6
+            },
+            "arrivalGap": {
+              "min": 0,
+              "max": 1
+            },
+            "burstSize": 1,
+            "burstGap": 0
+          }
+        },
+        "tasks": [
+          {
+            "id": "task-000001",
+            "release": 0,
+            "duration": 4
+          },
+          {
+            "id": "task-000002",
+            "release": 0,
+            "duration": 4
+          },
+          {
+            "id": "task-000003",
+            "release": 0,
+            "duration": 4
+          },
+          {
+            "id": "task-000004",
+            "release": 1,
+            "duration": 4
+          },
+          {
+            "id": "task-000005",
+            "release": 2,
+            "duration": 6
+          },
+          {
+            "id": "task-000006",
+            "release": 3,
+            "duration": 2
+          },
+          {
+            "id": "task-000007",
+            "release": 3,
+            "duration": 2
+          },
+          {
+            "id": "task-000008",
+            "release": 4,
+            "duration": 3
+          },
+          {
+            "id": "task-000009",
+            "release": 5,
+            "duration": 4
+          },
+          {
+            "id": "task-000010",
+            "release": 6,
+            "duration": 5
+          },
+          {
+            "id": "task-000011",
+            "release": 7,
+            "duration": 3
+          },
+          {
+            "id": "task-000012",
+            "release": 8,
+            "duration": 3
+          }
+        ]
+      }
+    },
+    {
+      "id": "bursty",
+      "sha256": "e22c9d8e3e90906961aa15979f7f86997e75c693f1c1cab70d35d1988d3571df",
+      "workload": {
+        "schemaVersion": 1,
+        "generation": {
+          "generator": "lcg32-workload-v1",
+          "seed": 20261002,
+          "parameters": {
+            "taskCount": 12,
+            "initialRelease": 0,
+            "duration": {
+              "min": 2,
+              "max": 6
+            },
+            "arrivalGap": {
+              "min": 0,
+              "max": 0
+            },
+            "burstSize": 4,
+            "burstGap": 8
+          }
+        },
+        "tasks": [
+          {
+            "id": "task-000001",
+            "release": 0,
+            "duration": 4
+          },
+          {
+            "id": "task-000002",
+            "release": 0,
+            "duration": 4
+          },
+          {
+            "id": "task-000003",
+            "release": 0,
+            "duration": 4
+          },
+          {
+            "id": "task-000004",
+            "release": 0,
+            "duration": 4
+          },
+          {
+            "id": "task-000005",
+            "release": 8,
+            "duration": 6
+          },
+          {
+            "id": "task-000006",
+            "release": 8,
+            "duration": 2
+          },
+          {
+            "id": "task-000007",
+            "release": 8,
+            "duration": 2
+          },
+          {
+            "id": "task-000008",
+            "release": 8,
+            "duration": 3
+          },
+          {
+            "id": "task-000009",
+            "release": 16,
+            "duration": 4
+          },
+          {
+            "id": "task-000010",
+            "release": 16,
+            "duration": 5
+          },
+          {
+            "id": "task-000011",
+            "release": 16,
+            "duration": 3
+          },
+          {
+            "id": "task-000012",
+            "release": 16,
+            "duration": 3
+          }
+        ]
+      }
+    },
+    {
+      "id": "idle-gaps",
+      "sha256": "41fcf86211368815413da6ad1769875a5cb23998a08d12447c7894ea62b5ae10",
+      "workload": {
+        "schemaVersion": 1,
+        "generation": {
+          "generator": "lcg32-workload-v1",
+          "seed": 20261002,
+          "parameters": {
+            "taskCount": 12,
+            "initialRelease": 5,
+            "duration": {
+              "min": 2,
+              "max": 6
+            },
+            "arrivalGap": {
+              "min": 1,
+              "max": 2
+            },
+            "burstSize": 3,
+            "burstGap": 30
+          }
+        },
+        "tasks": [
+          {
+            "id": "task-000001",
+            "release": 5,
+            "duration": 4
+          },
+          {
+            "id": "task-000002",
+            "release": 6,
+            "duration": 4
+          },
+          {
+            "id": "task-000003",
+            "release": 7,
+            "duration": 4
+          },
+          {
+            "id": "task-000004",
+            "release": 39,
+            "duration": 4
+          },
+          {
+            "id": "task-000005",
+            "release": 41,
+            "duration": 6
+          },
+          {
+            "id": "task-000006",
+            "release": 43,
+            "duration": 2
+          },
+          {
+            "id": "task-000007",
+            "release": 74,
+            "duration": 2
+          },
+          {
+            "id": "task-000008",
+            "release": 76,
+            "duration": 3
+          },
+          {
+            "id": "task-000009",
+            "release": 78,
+            "duration": 4
+          },
+          {
+            "id": "task-000010",
+            "release": 110,
+            "duration": 5
+          },
+          {
+            "id": "task-000011",
+            "release": 112,
+            "duration": 3
+          },
+          {
+            "id": "task-000012",
+            "release": 114,
+            "duration": 3
+          }
+        ]
+      }
+    }
+  ],
+  "runs": [
+    {
+      "inputId": "policy-comparison",
+      "policy": "fifo",
+      "schedule": [
+        {
+          "id": "A",
+          "start": 0,
+          "finish": 5,
+          "waiting": 0,
+          "turnaround": 5
+        },
+        {
+          "id": "B",
+          "start": 5,
+          "finish": 6,
+          "waiting": 5,
+          "turnaround": 6
+        },
+        {
+          "id": "C",
+          "start": 6,
+          "finish": 8,
+          "waiting": 6,
+          "turnaround": 8
+        }
+      ],
+      "metrics": {
+        "completedTasks": 3,
+        "makespan": 8,
+        "totalWaiting": 11,
+        "meanWaiting": 3.6666666666666665,
+        "maxWaiting": 6,
+        "totalTurnaround": 19,
+        "meanTurnaround": 6.333333333333333,
+        "busyTime": 8,
+        "idleTime": 0,
+        "utilization": 1
+      }
+    },
+    {
+      "inputId": "policy-comparison",
+      "policy": "sjf",
+      "schedule": [
+        {
+          "id": "B",
+          "start": 0,
+          "finish": 1,
+          "waiting": 0,
+          "turnaround": 1
+        },
+        {
+          "id": "C",
+          "start": 1,
+          "finish": 3,
+          "waiting": 1,
+          "turnaround": 3
+        },
+        {
+          "id": "A",
+          "start": 3,
+          "finish": 8,
+          "waiting": 3,
+          "turnaround": 8
+        }
+      ],
+      "metrics": {
+        "completedTasks": 3,
+        "makespan": 8,
+        "totalWaiting": 4,
+        "meanWaiting": 1.3333333333333333,
+        "maxWaiting": 3,
+        "totalTurnaround": 12,
+        "meanTurnaround": 4,
+        "busyTime": 8,
+        "idleTime": 0,
+        "utilization": 1
+      }
+    },
+    {
+      "inputId": "fairness-tradeoff",
+      "policy": "fifo",
+      "schedule": [
+        {
+          "id": "A",
+          "start": 0,
+          "finish": 3,
+          "waiting": 0,
+          "turnaround": 3
+        },
+        {
+          "id": "long",
+          "start": 3,
+          "finish": 6,
+          "waiting": 2,
+          "turnaround": 5
+        },
+        {
+          "id": "short-1",
+          "start": 6,
+          "finish": 7,
+          "waiting": 5,
+          "turnaround": 6
+        },
+        {
+          "id": "short-2",
+          "start": 7,
+          "finish": 8,
+          "waiting": 5,
+          "turnaround": 6
+        },
+        {
+          "id": "short-3",
+          "start": 8,
+          "finish": 9,
+          "waiting": 5,
+          "turnaround": 6
+        },
+        {
+          "id": "short-4",
+          "start": 9,
+          "finish": 10,
+          "waiting": 5,
+          "turnaround": 6
+        }
+      ],
+      "metrics": {
+        "completedTasks": 6,
+        "makespan": 10,
+        "totalWaiting": 22,
+        "meanWaiting": 3.6666666666666665,
+        "maxWaiting": 5,
+        "totalTurnaround": 32,
+        "meanTurnaround": 5.333333333333333,
+        "busyTime": 10,
+        "idleTime": 0,
+        "utilization": 1
+      }
+    },
+    {
+      "inputId": "fairness-tradeoff",
+      "policy": "sjf",
+      "schedule": [
+        {
+          "id": "A",
+          "start": 0,
+          "finish": 3,
+          "waiting": 0,
+          "turnaround": 3
+        },
+        {
+          "id": "short-1",
+          "start": 3,
+          "finish": 4,
+          "waiting": 2,
+          "turnaround": 3
+        },
+        {
+          "id": "short-2",
+          "start": 4,
+          "finish": 5,
+          "waiting": 2,
+          "turnaround": 3
+        },
+        {
+          "id": "short-3",
+          "start": 5,
+          "finish": 6,
+          "waiting": 2,
+          "turnaround": 3
+        },
+        {
+          "id": "short-4",
+          "start": 6,
+          "finish": 7,
+          "waiting": 2,
+          "turnaround": 3
+        },
+        {
+          "id": "long",
+          "start": 7,
+          "finish": 10,
+          "waiting": 6,
+          "turnaround": 9
+        }
+      ],
+      "metrics": {
+        "completedTasks": 6,
+        "makespan": 10,
+        "totalWaiting": 14,
+        "meanWaiting": 2.3333333333333335,
+        "maxWaiting": 6,
+        "totalTurnaround": 24,
+        "meanTurnaround": 4,
+        "busyTime": 10,
+        "idleTime": 0,
+        "utilization": 1
+      }
+    },
+    {
+      "inputId": "low-load",
+      "policy": "fifo",
+      "schedule": [
+        {
+          "id": "task-000001",
+          "start": 0,
+          "finish": 4,
+          "waiting": 0,
+          "turnaround": 4
+        },
+        {
+          "id": "task-000002",
+          "start": 10,
+          "finish": 14,
+          "waiting": 0,
+          "turnaround": 4
+        },
+        {
+          "id": "task-000003",
+          "start": 19,
+          "finish": 23,
+          "waiting": 0,
+          "turnaround": 4
+        },
+        {
+          "id": "task-000004",
+          "start": 31,
+          "finish": 35,
+          "waiting": 0,
+          "turnaround": 4
+        },
+        {
+          "id": "task-000005",
+          "start": 42,
+          "finish": 48,
+          "waiting": 0,
+          "turnaround": 6
+        },
+        {
+          "id": "task-000006",
+          "start": 53,
+          "finish": 55,
+          "waiting": 0,
+          "turnaround": 2
+        },
+        {
+          "id": "task-000007",
+          "start": 63,
+          "finish": 65,
+          "waiting": 0,
+          "turnaround": 2
+        },
+        {
+          "id": "task-000008",
+          "start": 74,
+          "finish": 77,
+          "waiting": 0,
+          "turnaround": 3
+        },
+        {
+          "id": "task-000009",
+          "start": 85,
+          "finish": 89,
+          "waiting": 0,
+          "turnaround": 4
+        },
+        {
+          "id": "task-000010",
+          "start": 97,
+          "finish": 102,
+          "waiting": 0,
+          "turnaround": 5
+        },
+        {
+          "id": "task-000011",
+          "start": 108,
+          "finish": 111,
+          "waiting": 0,
+          "turnaround": 3
+        },
+        {
+          "id": "task-000012",
+          "start": 119,
+          "finish": 122,
+          "waiting": 0,
+          "turnaround": 3
+        }
+      ],
+      "metrics": {
+        "completedTasks": 12,
+        "makespan": 122,
+        "totalWaiting": 0,
+        "meanWaiting": 0,
+        "maxWaiting": 0,
+        "totalTurnaround": 44,
+        "meanTurnaround": 3.6666666666666665,
+        "busyTime": 44,
+        "idleTime": 78,
+        "utilization": 0.36065573770491804
+      }
+    },
+    {
+      "inputId": "low-load",
+      "policy": "sjf",
+      "schedule": [
+        {
+          "id": "task-000001",
+          "start": 0,
+          "finish": 4,
+          "waiting": 0,
+          "turnaround": 4
+        },
+        {
+          "id": "task-000002",
+          "start": 10,
+          "finish": 14,
+          "waiting": 0,
+          "turnaround": 4
+        },
+        {
+          "id": "task-000003",
+          "start": 19,
+          "finish": 23,
+          "waiting": 0,
+          "turnaround": 4
+        },
+        {
+          "id": "task-000004",
+          "start": 31,
+          "finish": 35,
+          "waiting": 0,
+          "turnaround": 4
+        },
+        {
+          "id": "task-000005",
+          "start": 42,
+          "finish": 48,
+          "waiting": 0,
+          "turnaround": 6
+        },
+        {
+          "id": "task-000006",
+          "start": 53,
+          "finish": 55,
+          "waiting": 0,
+          "turnaround": 2
+        },
+        {
+          "id": "task-000007",
+          "start": 63,
+          "finish": 65,
+          "waiting": 0,
+          "turnaround": 2
+        },
+        {
+          "id": "task-000008",
+          "start": 74,
+          "finish": 77,
+          "waiting": 0,
+          "turnaround": 3
+        },
+        {
+          "id": "task-000009",
+          "start": 85,
+          "finish": 89,
+          "waiting": 0,
+          "turnaround": 4
+        },
+        {
+          "id": "task-000010",
+          "start": 97,
+          "finish": 102,
+          "waiting": 0,
+          "turnaround": 5
+        },
+        {
+          "id": "task-000011",
+          "start": 108,
+          "finish": 111,
+          "waiting": 0,
+          "turnaround": 3
+        },
+        {
+          "id": "task-000012",
+          "start": 119,
+          "finish": 122,
+          "waiting": 0,
+          "turnaround": 3
+        }
+      ],
+      "metrics": {
+        "completedTasks": 12,
+        "makespan": 122,
+        "totalWaiting": 0,
+        "meanWaiting": 0,
+        "maxWaiting": 0,
+        "totalTurnaround": 44,
+        "meanTurnaround": 3.6666666666666665,
+        "busyTime": 44,
+        "idleTime": 78,
+        "utilization": 0.36065573770491804
+      }
+    },
+    {
+      "inputId": "high-load",
+      "policy": "fifo",
+      "schedule": [
+        {
+          "id": "task-000001",
+          "start": 0,
+          "finish": 4,
+          "waiting": 0,
+          "turnaround": 4
+        },
+        {
+          "id": "task-000002",
+          "start": 4,
+          "finish": 8,
+          "waiting": 4,
+          "turnaround": 8
+        },
+        {
+          "id": "task-000003",
+          "start": 8,
+          "finish": 12,
+          "waiting": 8,
+          "turnaround": 12
+        },
+        {
+          "id": "task-000004",
+          "start": 12,
+          "finish": 16,
+          "waiting": 11,
+          "turnaround": 15
+        },
+        {
+          "id": "task-000005",
+          "start": 16,
+          "finish": 22,
+          "waiting": 14,
+          "turnaround": 20
+        },
+        {
+          "id": "task-000006",
+          "start": 22,
+          "finish": 24,
+          "waiting": 19,
+          "turnaround": 21
+        },
+        {
+          "id": "task-000007",
+          "start": 24,
+          "finish": 26,
+          "waiting": 21,
+          "turnaround": 23
+        },
+        {
+          "id": "task-000008",
+          "start": 26,
+          "finish": 29,
+          "waiting": 22,
+          "turnaround": 25
+        },
+        {
+          "id": "task-000009",
+          "start": 29,
+          "finish": 33,
+          "waiting": 24,
+          "turnaround": 28
+        },
+        {
+          "id": "task-000010",
+          "start": 33,
+          "finish": 38,
+          "waiting": 27,
+          "turnaround": 32
+        },
+        {
+          "id": "task-000011",
+          "start": 38,
+          "finish": 41,
+          "waiting": 31,
+          "turnaround": 34
+        },
+        {
+          "id": "task-000012",
+          "start": 41,
+          "finish": 44,
+          "waiting": 33,
+          "turnaround": 36
+        }
+      ],
+      "metrics": {
+        "completedTasks": 12,
+        "makespan": 44,
+        "totalWaiting": 214,
+        "meanWaiting": 17.833333333333332,
+        "maxWaiting": 33,
+        "totalTurnaround": 258,
+        "meanTurnaround": 21.5,
+        "busyTime": 44,
+        "idleTime": 0,
+        "utilization": 1
+      }
+    },
+    {
+      "inputId": "high-load",
+      "policy": "sjf",
+      "schedule": [
+        {
+          "id": "task-000001",
+          "start": 0,
+          "finish": 4,
+          "waiting": 0,
+          "turnaround": 4
+        },
+        {
+          "id": "task-000006",
+          "start": 4,
+          "finish": 6,
+          "waiting": 1,
+          "turnaround": 3
+        },
+        {
+          "id": "task-000007",
+          "start": 6,
+          "finish": 8,
+          "waiting": 3,
+          "turnaround": 5
+        },
+        {
+          "id": "task-000008",
+          "start": 8,
+          "finish": 11,
+          "waiting": 4,
+          "turnaround": 7
+        },
+        {
+          "id": "task-000011",
+          "start": 11,
+          "finish": 14,
+          "waiting": 4,
+          "turnaround": 7
+        },
+        {
+          "id": "task-000012",
+          "start": 14,
+          "finish": 17,
+          "waiting": 6,
+          "turnaround": 9
+        },
+        {
+          "id": "task-000002",
+          "start": 17,
+          "finish": 21,
+          "waiting": 17,
+          "turnaround": 21
+        },
+        {
+          "id": "task-000003",
+          "start": 21,
+          "finish": 25,
+          "waiting": 21,
+          "turnaround": 25
+        },
+        {
+          "id": "task-000004",
+          "start": 25,
+          "finish": 29,
+          "waiting": 24,
+          "turnaround": 28
+        },
+        {
+          "id": "task-000009",
+          "start": 29,
+          "finish": 33,
+          "waiting": 24,
+          "turnaround": 28
+        },
+        {
+          "id": "task-000010",
+          "start": 33,
+          "finish": 38,
+          "waiting": 27,
+          "turnaround": 32
+        },
+        {
+          "id": "task-000005",
+          "start": 38,
+          "finish": 44,
+          "waiting": 36,
+          "turnaround": 42
+        }
+      ],
+      "metrics": {
+        "completedTasks": 12,
+        "makespan": 44,
+        "totalWaiting": 167,
+        "meanWaiting": 13.916666666666666,
+        "maxWaiting": 36,
+        "totalTurnaround": 211,
+        "meanTurnaround": 17.583333333333332,
+        "busyTime": 44,
+        "idleTime": 0,
+        "utilization": 1
+      }
+    },
+    {
+      "inputId": "bursty",
+      "policy": "fifo",
+      "schedule": [
+        {
+          "id": "task-000001",
+          "start": 0,
+          "finish": 4,
+          "waiting": 0,
+          "turnaround": 4
+        },
+        {
+          "id": "task-000002",
+          "start": 4,
+          "finish": 8,
+          "waiting": 4,
+          "turnaround": 8
+        },
+        {
+          "id": "task-000003",
+          "start": 8,
+          "finish": 12,
+          "waiting": 8,
+          "turnaround": 12
+        },
+        {
+          "id": "task-000004",
+          "start": 12,
+          "finish": 16,
+          "waiting": 12,
+          "turnaround": 16
+        },
+        {
+          "id": "task-000005",
+          "start": 16,
+          "finish": 22,
+          "waiting": 8,
+          "turnaround": 14
+        },
+        {
+          "id": "task-000006",
+          "start": 22,
+          "finish": 24,
+          "waiting": 14,
+          "turnaround": 16
+        },
+        {
+          "id": "task-000007",
+          "start": 24,
+          "finish": 26,
+          "waiting": 16,
+          "turnaround": 18
+        },
+        {
+          "id": "task-000008",
+          "start": 26,
+          "finish": 29,
+          "waiting": 18,
+          "turnaround": 21
+        },
+        {
+          "id": "task-000009",
+          "start": 29,
+          "finish": 33,
+          "waiting": 13,
+          "turnaround": 17
+        },
+        {
+          "id": "task-000010",
+          "start": 33,
+          "finish": 38,
+          "waiting": 17,
+          "turnaround": 22
+        },
+        {
+          "id": "task-000011",
+          "start": 38,
+          "finish": 41,
+          "waiting": 22,
+          "turnaround": 25
+        },
+        {
+          "id": "task-000012",
+          "start": 41,
+          "finish": 44,
+          "waiting": 25,
+          "turnaround": 28
+        }
+      ],
+      "metrics": {
+        "completedTasks": 12,
+        "makespan": 44,
+        "totalWaiting": 157,
+        "meanWaiting": 13.083333333333334,
+        "maxWaiting": 25,
+        "totalTurnaround": 201,
+        "meanTurnaround": 16.75,
+        "busyTime": 44,
+        "idleTime": 0,
+        "utilization": 1
+      }
+    },
+    {
+      "inputId": "bursty",
+      "policy": "sjf",
+      "schedule": [
+        {
+          "id": "task-000001",
+          "start": 0,
+          "finish": 4,
+          "waiting": 0,
+          "turnaround": 4
+        },
+        {
+          "id": "task-000002",
+          "start": 4,
+          "finish": 8,
+          "waiting": 4,
+          "turnaround": 8
+        },
+        {
+          "id": "task-000006",
+          "start": 8,
+          "finish": 10,
+          "waiting": 0,
+          "turnaround": 2
+        },
+        {
+          "id": "task-000007",
+          "start": 10,
+          "finish": 12,
+          "waiting": 2,
+          "turnaround": 4
+        },
+        {
+          "id": "task-000008",
+          "start": 12,
+          "finish": 15,
+          "waiting": 4,
+          "turnaround": 7
+        },
+        {
+          "id": "task-000003",
+          "start": 15,
+          "finish": 19,
+          "waiting": 15,
+          "turnaround": 19
+        },
+        {
+          "id": "task-000011",
+          "start": 19,
+          "finish": 22,
+          "waiting": 3,
+          "turnaround": 6
+        },
+        {
+          "id": "task-000012",
+          "start": 22,
+          "finish": 25,
+          "waiting": 6,
+          "turnaround": 9
+        },
+        {
+          "id": "task-000004",
+          "start": 25,
+          "finish": 29,
+          "waiting": 25,
+          "turnaround": 29
+        },
+        {
+          "id": "task-000009",
+          "start": 29,
+          "finish": 33,
+          "waiting": 13,
+          "turnaround": 17
+        },
+        {
+          "id": "task-000010",
+          "start": 33,
+          "finish": 38,
+          "waiting": 17,
+          "turnaround": 22
+        },
+        {
+          "id": "task-000005",
+          "start": 38,
+          "finish": 44,
+          "waiting": 30,
+          "turnaround": 36
+        }
+      ],
+      "metrics": {
+        "completedTasks": 12,
+        "makespan": 44,
+        "totalWaiting": 119,
+        "meanWaiting": 9.916666666666666,
+        "maxWaiting": 30,
+        "totalTurnaround": 163,
+        "meanTurnaround": 13.583333333333334,
+        "busyTime": 44,
+        "idleTime": 0,
+        "utilization": 1
+      }
+    },
+    {
+      "inputId": "idle-gaps",
+      "policy": "fifo",
+      "schedule": [
+        {
+          "id": "task-000001",
+          "start": 5,
+          "finish": 9,
+          "waiting": 0,
+          "turnaround": 4
+        },
+        {
+          "id": "task-000002",
+          "start": 9,
+          "finish": 13,
+          "waiting": 3,
+          "turnaround": 7
+        },
+        {
+          "id": "task-000003",
+          "start": 13,
+          "finish": 17,
+          "waiting": 6,
+          "turnaround": 10
+        },
+        {
+          "id": "task-000004",
+          "start": 39,
+          "finish": 43,
+          "waiting": 0,
+          "turnaround": 4
+        },
+        {
+          "id": "task-000005",
+          "start": 43,
+          "finish": 49,
+          "waiting": 2,
+          "turnaround": 8
+        },
+        {
+          "id": "task-000006",
+          "start": 49,
+          "finish": 51,
+          "waiting": 6,
+          "turnaround": 8
+        },
+        {
+          "id": "task-000007",
+          "start": 74,
+          "finish": 76,
+          "waiting": 0,
+          "turnaround": 2
+        },
+        {
+          "id": "task-000008",
+          "start": 76,
+          "finish": 79,
+          "waiting": 0,
+          "turnaround": 3
+        },
+        {
+          "id": "task-000009",
+          "start": 79,
+          "finish": 83,
+          "waiting": 1,
+          "turnaround": 5
+        },
+        {
+          "id": "task-000010",
+          "start": 110,
+          "finish": 115,
+          "waiting": 0,
+          "turnaround": 5
+        },
+        {
+          "id": "task-000011",
+          "start": 115,
+          "finish": 118,
+          "waiting": 3,
+          "turnaround": 6
+        },
+        {
+          "id": "task-000012",
+          "start": 118,
+          "finish": 121,
+          "waiting": 4,
+          "turnaround": 7
+        }
+      ],
+      "metrics": {
+        "completedTasks": 12,
+        "makespan": 121,
+        "totalWaiting": 25,
+        "meanWaiting": 2.0833333333333335,
+        "maxWaiting": 6,
+        "totalTurnaround": 69,
+        "meanTurnaround": 5.75,
+        "busyTime": 44,
+        "idleTime": 77,
+        "utilization": 0.36363636363636365
+      }
+    },
+    {
+      "inputId": "idle-gaps",
+      "policy": "sjf",
+      "schedule": [
+        {
+          "id": "task-000001",
+          "start": 5,
+          "finish": 9,
+          "waiting": 0,
+          "turnaround": 4
+        },
+        {
+          "id": "task-000002",
+          "start": 9,
+          "finish": 13,
+          "waiting": 3,
+          "turnaround": 7
+        },
+        {
+          "id": "task-000003",
+          "start": 13,
+          "finish": 17,
+          "waiting": 6,
+          "turnaround": 10
+        },
+        {
+          "id": "task-000004",
+          "start": 39,
+          "finish": 43,
+          "waiting": 0,
+          "turnaround": 4
+        },
+        {
+          "id": "task-000006",
+          "start": 43,
+          "finish": 45,
+          "waiting": 0,
+          "turnaround": 2
+        },
+        {
+          "id": "task-000005",
+          "start": 45,
+          "finish": 51,
+          "waiting": 4,
+          "turnaround": 10
+        },
+        {
+          "id": "task-000007",
+          "start": 74,
+          "finish": 76,
+          "waiting": 0,
+          "turnaround": 2
+        },
+        {
+          "id": "task-000008",
+          "start": 76,
+          "finish": 79,
+          "waiting": 0,
+          "turnaround": 3
+        },
+        {
+          "id": "task-000009",
+          "start": 79,
+          "finish": 83,
+          "waiting": 1,
+          "turnaround": 5
+        },
+        {
+          "id": "task-000010",
+          "start": 110,
+          "finish": 115,
+          "waiting": 0,
+          "turnaround": 5
+        },
+        {
+          "id": "task-000011",
+          "start": 115,
+          "finish": 118,
+          "waiting": 3,
+          "turnaround": 6
+        },
+        {
+          "id": "task-000012",
+          "start": 118,
+          "finish": 121,
+          "waiting": 4,
+          "turnaround": 7
+        }
+      ],
+      "metrics": {
+        "completedTasks": 12,
+        "makespan": 121,
+        "totalWaiting": 21,
+        "meanWaiting": 1.75,
+        "maxWaiting": 6,
+        "totalTurnaround": 65,
+        "meanTurnaround": 5.416666666666667,
+        "busyTime": 44,
+        "idleTime": 77,
+        "utilization": 0.36363636363636365
+      }
+    }
+  ]
+}

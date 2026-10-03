@@ -1,6 +1,6 @@
 # Reproducible Scheduler Lab
 
-可复现的任务调度仿真项目，用来比较调度规则、核验指标，并保留可重跑的实验结果。目前提供确定性的单 worker、非抢占调度环境、FIFO/SJF 基准策略、固定 seed 工作负载生成器、命令行入口和等待时间公平性核验。后续逐步增加批实验工具，具体计划见 [7 日路线图](docs/ROADMAP.md)。
+可复现的任务调度仿真项目，用来比较调度规则、核验指标，并保留可重跑的实验结果。目前提供确定性的单 worker、非抢占调度环境、FIFO/SJF 基准策略、固定 seed 工作负载生成器、命令行入口、等待时间公平性核验和可独立重算的固定批实验工具。具体计划见 [7 日路线图](docs/ROADMAP.md)。
 
 项目采用 Node.js ESM 和内置测试工具，无第三方运行或测试依赖。运行、测试不需要下载包或联网。
 
@@ -16,9 +16,11 @@ node src/cli.mjs examples/tiny.json --policy sjf
 node src/cli.mjs examples/fairness-tradeoff.json --policy sjf
 node src/generate.mjs examples/generator/high-load.json
 node src/cli.mjs examples/generated/high-load.json --policy sjf
+node src/batch.mjs examples/experiments/baselines.json
+node src/summarize.mjs examples/experiments/baselines.raw.json
 ```
 
-无需执行 `npm install`。命令行支持 `--policy fifo`（默认）与 `--policy sjf`。未知策略会返回非零退出码。
+无需执行 `npm install`。调度命令 `src/cli.mjs` 支持 `--policy fifo`（默认）与 `--policy sjf`。未知策略会返回非零退出码。
 
 ## 调度规则
 
@@ -175,24 +177,42 @@ node src/cli.mjs examples/generated/idle-gaps.json --policy fifo
 
 完整参数、突发间隔语义、伪随机算法和版本规则、固定输入的指标及重跑方法见 [工作负载与复现](docs/WORKLOADS.md)。生成器面向有限的教学与回归仿真，不是密码学随机源，也不宣称这些样本代表真实生产流量。不同 seed 通常产生不同样本，但退化参数或有限样本可能相同。
 
+## 固定批实验与可重算汇总
+
+```sh
+mkdir -p experiments/local
+node src/batch.mjs examples/experiments/baselines.json > experiments/local/baselines.raw.json
+node src/summarize.mjs experiments/local/baselines.raw.json > experiments/local/baselines.summary.json
+cmp examples/experiments/baselines.raw.json experiments/local/baselines.raw.json
+cmp examples/experiments/baselines.summary.json experiments/local/baselines.summary.json
+```
+
+批次包含两个手算输入和四个固定 seed 场景，每个输入各运行 FIFO/SJF，一共 12 条原始结果。raw 保留完整规范化输入、已验证的 seed/生成参数、输入哈希、源码哈希、引擎/策略版本、配置、指标定义、schedule 和 metrics；没有时间戳或机器信息。manifest 的文件路径相对于 manifest 所在目录解析，不写入输出。
+
+汇总命令仅从 raw 读取数据，独立核验时间线和单次指标，再计算任务加权平均等待、跨场景最坏等待及时间加权 utilization；不需要原输入文件。固定批次每个策略处理 57 个任务，FIFO 总等待 429、最大等待 33；SJF 总等待 325、最大等待 36。平均改善仍伴随最坏等待退化，不能只看汇总平均数。
+
+`src/experiment.mjs` 导出 `runExperiment(specification)` 和 `summarizeExperiment(raw)`。完整 manifest/API、版本和哈希约定、重放校验、聚合权重、安全整数限制与结果见 [批实验协议](docs/EXPERIMENTS.md)。CLI 失败时 stdout 为空；重定向请使用单独的输出文件，不要覆盖输入。
+
 ## 目录
 
 ```text
-src/             调度环境、共享策略、运行器、seed 生成器与两个 CLI
+src/             调度环境、共享策略、运行器、seed 生成器、批实验/汇总与 CLI
 examples/        最小输入和手算策略/公平性 fixtures
 examples/generator/ 固定 seed 生成配置
 examples/generated/ 可重放的生成输入
+examples/experiments/ 固定批次 manifest、raw JSON 和重算汇总
 test/            Node.js 内置测试
 docs/ROADMAP.md  7 日依赖与验收计划
 docs/HANDOFF.md  实际状态、缺项和下一次恢复步骤
 docs/BASELINES.md 手算基准、指标与公平性权衡
 docs/WORKLOADS.md 生成协议、参数、场景与复现步骤
+docs/EXPERIMENTS.md 批实验、溯源、独立核验和汇总定义
 ```
 
 ## 当前范围与后续工作
 
-Day 1–3 已实现调度内核、FIFO/SJF 共享策略与 CLI、最大等待指标、手算示例、固定 seed 生成器和场景 fixtures、测试与文档。实际验收、commit 与发布状态以 [交接记录](docs/HANDOFF.md) 为准。
+Day 1–4 已实现调度内核、FIFO/SJF 共享策略与 CLI、最大等待指标、手算示例、固定 seed 生成器和场景 fixtures、批实验/原始结果/独立汇总、测试与文档。实际验收、commit 与发布状态以 [交接记录](docs/HANDOFF.md) 为准。
 
-批实验、加权等待策略和最终报告属于后续计划，尚不能当作现有功能。此项目没有训练结果，也不承诺某种策略会在所有工作负载上胜出。
+加权等待策略、进一步回归核验和最终报告属于后续计划，尚不能当作现有功能。此项目没有训练结果，也不承诺某种策略会在所有工作负载上胜出。
 
 开发记录只包含实际完成的工作和实际执行的测试。每日提交需要当天存在有意义且通过验收的改动；不使用空提交、回填日期或虚构工时补齐计划。公开发布仅包含本项目代码、测试、示例与文档。

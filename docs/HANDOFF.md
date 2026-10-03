@@ -115,3 +115,34 @@ CI 的官方 checkout/setup-node v7 操作已锁定到已核验的完整提交 S
 当前未解决功能阻塞：无。已知限制：LCG 面向固定 fixtures，不保证统计独立性或生产流量代表性；不同 seed 不保证有限样本都不同；burstGap 不是实际 idle 的保证；taskCount 最大 10000，现有环境并未针对大规模性能优化。元数据只描述生成过程，手改 tasks 后不自动校验其来源。完整批实验封装、加权策略与报告仍未实现。
 
 下一次第一步：核验 Day 3 远程 `main` SHA 和 Node.js 22/24 CI；成功后按 ROADMAP Day 4 实现固定输入批比较、逐次原始 JSON 与可重算汇总，保留输入、seed、参数、策略与版本信息。若发布失败先恢复本阶段发布；不要重做 Day 3 或制造空提交。
+
+## Day 4 验收快照
+
+- 实际日期/时区：2026-10-03（UTC），Day 4 功能发布前；之前的 Day 1–3 记录保留为历史快照
+- 恢复检查：云端 checkout 干净，`main` 起点为 `7434c1018242f84cd19cd93e53ca3e1be4b3fd25`，与远程分支及公开 fetch 结果一致；没有仓库级 AGENTS.md 或附加技能要求，未覆盖他人的改动
+- Day 3 发布核验：上述 SHA 的 [CI run 36984292139](https://github.com/a123i/reproducible-scheduler-lab/actions/runs/36984292139) 为 completed/success，`test (22)` 与 `test (24)` 均成功；修改前在本地重跑 121 项测试全部通过
+- 完成的行为：`src/experiment.mjs` 提供 `runExperiment` 和 `summarizeExperiment`；`src/batch.mjs` 读取固定 manifest 并输出自包含 raw JSON；`src/summarize.mjs` 仅从 raw 独立核验时间线/指标，再输出任务及时间加权汇总
+- 原始数据保存规范化完整输入、已重放核验的 seed/参数、输入内容哈希、九个已知项目源码的字节哈希、引擎/策略版本、配置、指标定义、完整 schedule 和 metrics；无时钟、主机信息、环境变量或绝对输入路径
+- 校验覆盖每个输入/策略组合恰好一次、任务唯一完成、合法策略动作、无额外 idle、准确的 duration/waiting/turnaround、原始指标一致性和批次 BigInt 聚合安全界；未知版本或不一致数据报错，不输出部分汇总
+- 六个固定输入 × 两种策略的 manifest、raw 和 summary 位于 `examples/experiments/`。每种策略各处理 57 个任务；FIFO 总/最大等待为 429/33，SJF 为 325/36，表明平均改善仍可能伴随最坏等待退化
+- 新增 `test/experiment.test.mjs`、`test/experiment-cli.test.mjs` 和 [EXPERIMENTS.md](EXPERIMENTS.md)，更新 README、路线图与 Node.js 22/24 CI 的 raw/summary 字节级再生成比较
+- 实际云端环境：Node.js 24.19.0、npm 11.9.0；项目运行不需要安装依赖或联网。npm 显示已有 http-proxy 配置警告及版本更新提示，不影响命令退出状态。本地未单独运行 Node.js 22，以发布后同一 SHA 的 CI 为准
+- 未计时，不填写工时
+
+| 项目 | 实际执行与结果 |
+| --- | --- |
+| 完整测试 | `npm test`：148 项通过，0 失败，0 skipped，退出码 0 |
+| 原有兼容检查 | `npm run demo` 成功；四组生成 CLI 与提交 fixtures 的 `cmp` 全部一致；四个生成输入各运行 FIFO/SJF，8 条调度命令成功 |
+| 固定批实验 | `node src/batch.mjs examples/experiments/baselines.json` 成功，输出与 `baselines.raw.json` 字节一致；同样输入重复运行一致 |
+| 独立重算汇总 | `node src/summarize.mjs <raw.json>` 成功，输出与 `baselines.summary.json` 字节一致；测试证明原输入/manifest 文件删除后仍可汇总 |
+| 汇总与边界 | 覆盖任务加权/时间加权与错误的均值平均的区别、全空 workload、输入隔离、Unicode 排序、MAX_SAFE_INTEGER 边界、跨运行聚合溢出、修改指标/时间线、重复/遗漏组合和未知版本 |
+| CLI 与隐私边界 | 覆盖任意 cwd、相对/绝对路径、含空格路径、help、非法参数/JSON/文件、空 stdout 失败、错误不回显输入和路径、额外 workload 字段/环境变量不进入 raw |
+| 扩展抽样检查 | 对 400 个批次的 3200 条生成输入策略结果，另从原始时间线核验整数总量、最坏等待、busy 与 makespan，均通过 |
+| 独立复核 | 使用另一套仿真算法核验 7381 个小工作负载、14762 个策略结果及两组 pooled 汇总；已提交的 12 条原始运行也匹配。拒绝 974 个标量篡改、232 个额外字段、1035 个缺失字段和 6 个重算哈希后的任务篡改；聚合溢出明确拒绝，未发现阻塞缺陷 |
+| JavaScript 与格式 | 全部 `src/*.mjs`、`test/*.mjs` 逐个 `node --check` 通过；`git diff --check` 通过 |
+| 功能 commit / 发布 | 本快照为提交前记录，Day 4 SHA 尚未生成；使用已授权 GitHub tree/commit/ref 接口做非强制快进发布，不将其称为 shell push；不创建或提取 shell 发布凭据 |
+| 同一 SHA CI | 本快照完成时 Day 4 尚未发布，因此其 CI 尚未运行；发布后须核对远程相同 SHA 的 Node.js 22/24 检查 |
+
+当前未解决功能阻塞：无。已知限制：摘要重算独立于环境的状态转移实现，但共享 workload 校验和策略选择函数；哈希用于内容关联和源码对照，不提供可信签名或来源认证。归档 source hash 只核验格式，不要求与本机源码相同；未知协议或语义不兼容变更需要版本升级。聚合超过安全整数域须拆分批次；小规模固定样本不代表真实流量，不提供置信区间，也不能据此推导全局最优。用户写在任务 ID 中的数据仍会进入 raw，公开新输入前需要自行审查。源码注释变化也会改变源码哈希，修改已记录源码后须重新生成、审查固定 raw/summary。
+
+下一次第一步：核验 Day 4 实际远程 `main` SHA 与 Node.js 22/24 CI；成功后按 ROADMAP Day 5 固定策略扩展约定、增加带等待时间权重的贪心策略，在同一批输入上与 FIFO/SJF 对照，补充改善和退化案例及合法动作测试。如本阶段发布失败先恢复发布，不能重复制造 Day 4 增量、空提交或回填日期。
