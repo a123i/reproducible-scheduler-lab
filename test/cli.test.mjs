@@ -180,3 +180,24 @@ test('unknown policy names cannot emit terminal control sequences', () => {
   assertFriendlyError(result);
   assert.doesNotMatch(result.stderr, /[\u0000-\u0008\u000b-\u001f\u007f-\u009f]/);
 });
+
+test('waiting-weighted CLI is reproducible and exposes the new policy in help', () => {
+  const path = fileURLToPath(new URL('../examples/fairness-tradeoff.json', import.meta.url));
+  const result = run([path, '--policy', 'waiting-weighted']);
+  assert.equal(result.status, 0);
+  assert.equal(result.stderr, '');
+  const output = JSON.parse(result.stdout);
+  assert.equal(output.policy, 'waiting-weighted');
+  assert.deepEqual(output.schedule.map(({ id }) => id), ['A', 'short-1', 'short-2', 'long', 'short-3', 'short-4']);
+  assert.equal(output.metrics.totalWaiting, 18);
+  assert.equal(output.metrics.maxWaiting, 5);
+  assert.equal(run([path, '--policy', 'waiting-weighted']).stdout, result.stdout);
+  assert.match(run(['--help']).stdout, /fifo\|sjf\|waiting-weighted/);
+});
+
+test('waiting-weighted CLI handles empty input and does not accept unrecorded weight overrides', (t) => {
+  const empty = run([fixture(t, { schemaVersion: 1, tasks: [] }), '--policy', 'waiting-weighted']);
+  assert.equal(empty.status, 0);
+  assert.deepEqual(JSON.parse(empty.stdout).schedule, []);
+  assertFriendlyError(run([examplePath, '--policy', 'waiting-weighted', '--waiting-weight', '2']));
+});

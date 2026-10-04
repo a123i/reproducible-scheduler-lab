@@ -371,3 +371,36 @@ test('safe individual runs cannot silently overflow cross-run summary aggregates
     assert.throws(() => summarizeExperiment(raw), { name: 'RangeError', message: /safe integer/ });
   }
 });
+
+test('weighted experiments record the fixed weight and reject altered versions or parameters', () => {
+  const spec = specification();
+  spec.policies.push('waiting-weighted');
+  const raw = runExperiment(spec);
+  assert.deepEqual(raw.policies[2], {
+    name: 'waiting-weighted', version: 'waiting-weighted-v1', parameters: { waitingWeight: 1 },
+  });
+  assert.equal(summarizeExperiment(raw).runCount, 9);
+  for (const change of [
+    (value) => { value.policies[2].version = 'waiting-weighted-v2'; },
+    (value) => { value.policies[2].parameters.waitingWeight = 0; },
+    (value) => { value.policies[2].parameters.waitingWeight = 2; },
+    (value) => { value.policies[2].parameters.waitingWeight = '1'; },
+    (value) => { delete value.policies[2].parameters.waitingWeight; },
+    (value) => { value.policies[2].parameters.extra = 1; },
+  ]) {
+    const altered = structuredClone(raw);
+    change(altered);
+    assert.throws(() => summarizeExperiment(altered), /Policy versions and parameters/);
+  }
+  raw.policies[2].parameters.waitingWeight = 999;
+  assert.equal(runExperiment(spec).policies[2].parameters.waitingWeight, 1);
+});
+
+test('summary rejects relabeled SJF schedules that violate the weighted policy', () => {
+  const input = JSON.parse(readFileSync(new URL('../examples/fairness-tradeoff.json', import.meta.url), 'utf8'));
+  const raw = runExperiment({ schemaVersion: 1, policies: ['sjf', 'waiting-weighted'], workloads: [{ id: 'fairness', workload: input }] });
+  assert.doesNotThrow(() => summarizeExperiment(raw));
+  raw.runs[1].schedule = structuredClone(raw.runs[0].schedule);
+  raw.runs[1].metrics = structuredClone(raw.runs[0].metrics);
+  assert.throws(() => summarizeExperiment(raw), /recorded policy/);
+});

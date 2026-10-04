@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "policies": [
+    "fifo",
+    "sjf",
+    "waiting-weighted"
+  ],
+  "workloads": [
+    {
+      "id": "policy-comparison",
+      "path": "../policy-comparison.json"
+    },
+    {
+      "id": "fairness-tradeoff",
+      "path": "../fairness-tradeoff.json"
+    },
+    {
+      "id": "low-load",
+      "path": "../generated/low-load.json"
+    },
+    {
+      "id": "high-load",
+      "path": "../generated/high-load.json"
+    },
+    {
+      "id": "bursty",
+      "path": "../generated/bursty.json"
+    },
+    {
+      "id": "idle-gaps",
+      "path": "../generated/idle-gaps.json"
+    },
+    {
+      "id": "waiting-weighted-regression",
+      "path": "../waiting-weighted-regression.json"
+    }
+  ]
+}

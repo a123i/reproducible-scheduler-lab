@@ -35,3 +35,11 @@ jobs:
           cmp examples/experiments/baselines.raw.json "$RUNNER_TEMP/baselines.raw.json"
           node src/summarize.mjs "$RUNNER_TEMP/baselines.raw.json" > "$RUNNER_TEMP/baselines.summary.json"
           cmp examples/experiments/baselines.summary.json "$RUNNER_TEMP/baselines.summary.json"
+      - name: Reproduce all policies and the waiting-weighted tradeoffs
+        run: |
+          node src/cli.mjs examples/fairness-tradeoff.json --policy waiting-weighted
+          node src/cli.mjs examples/waiting-weighted-regression.json --policy waiting-weighted
+          node src/batch.mjs examples/experiments/policies.json > "$RUNNER_TEMP/policies.raw.json"
+          cmp examples/experiments/policies.raw.json "$RUNNER_TEMP/policies.raw.json"
+          node src/summarize.mjs "$RUNNER_TEMP/policies.raw.json" > "$RUNNER_TEMP/policies.summary.json"
+          cmp examples/experiments/policies.summary.json "$RUNNER_TEMP/policies.summary.json"

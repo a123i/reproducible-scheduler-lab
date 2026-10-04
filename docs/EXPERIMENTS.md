@@ -1,6 +1,6 @@
 # 固定批实验与原始结果
 
-Day 4 提供六个固定输入 × FIFO/SJF 的完整配对比较。实验数据、seed、生成参数、策略版本、配置、时间线和指标定义都保存在 raw JSON；汇总命令只需这一个文件，不需要原 manifest、输入文件或 Git 元数据。
+Day 4 提供六个固定输入 × FIFO/SJF 的完整配对比较；Day 5 另外提供七个相同输入 × FIFO/SJF/waiting-weighted 的扩展配对批次。实验数据、seed、生成参数、策略版本、配置、时间线和指标定义都保存在 raw JSON；汇总命令只需这一个文件，不需要原 manifest、输入文件或 Git 元数据。
 
 ## 离线重跑
 
@@ -39,7 +39,7 @@ cmp examples/experiments/baselines.summary.json experiments/local/baselines.summ
 
 `path` 相对于 manifest 所在目录解析，不相对于 shell 的工作目录；绝对路径也可用于本地输入。路径仅用于读取，不写入 raw。输入文件仍采用既有 workload schema。`id` 是用于关联结果的人工场景标签，须唯一、长度 1–64，以 ASCII 字母或数字开头，其余字符只能是字母、数字、点、下划线或连字符。
 
-`policies` 和 `workloads` 必须为非空数组；策略不得重复，且只支持已实现的 FIFO/SJF。每个 workload 自身可以有零个任务。manifest 及每个 entry 的字段必须完整且无未知字段，避免拼写错误悄悄改变实验。一次批次仅执行每个输入/策略组合一次；重复跑同一确定性样本不是新增独立样本。
+`policies` 和 `workloads` 必须为非空数组；策略不得重复，支持已注册的 `fifo`、`sjf` 和 `waiting-weighted`。每个 workload 自身可以有零个任务。manifest 及每个 entry 的字段必须完整且无未知字段，避免拼写错误悄悄改变实验。一次批次仅执行每个输入/策略组合一次；重复跑同一确定性样本不是新增独立样本。
 
 ```js
 import { runExperiment, summarizeExperiment } from './src/experiment.mjs';
@@ -70,7 +70,7 @@ raw schemaVersion 1 的主要字段：
 | `provenance.configuration` | worker 数、抢占开关、整数 tick 时间单位、自动 idle 规则、Unicode 代码点 tie-break |
 | `provenance.sourceFilesSha256` | 九个固定 `src/` 文件的原始文件字节 SHA-256，包括内核、策略、运行器、生成/重放模块和实验工具；不读取 Git 身份、环境变量或任意用户文件 |
 | `metricDefinitions` | 每次运行的全部指标定义，与 README 的完成态指标一致 |
-| `policies` | 名称、版本（`fifo-v1` / `sjf-v1`）、完整参数对象（目前均为 `{}`） |
+| `policies` | 名称、版本（`fifo-v1` / `sjf-v1` / `waiting-weighted-v1`）、完整参数对象（前两者为 `{}`，加权策略为 `{ "waitingWeight": 1 }`） |
 | `inputs` | 场景 ID、规范化 workload 的 SHA-256，以及完整 workload |
 | `runs` | 每个输入/策略组合的 `inputId`、`policy`、逐任务 `schedule` 和 `metrics` |
 
@@ -117,4 +117,17 @@ workload 只保留 `schemaVersion`、任务的 `id/release/duration` 和可选�
 
 两者 pooled utilization 为 `194/349 ≈ 0.555874`。此固定批次中 SJF 降低总/平均等待，但最坏等待从 33 增至 36。它不能推导 SJF 对所有输入更公平、更优或有显著统计改善。细节仍须查看 raw 的每场景 metrics 和每任务 waiting；汇总会掩盖不同场景的权衡。
 
-下一阶段才增加带等待时间权重的策略；当前没有训练、加权策略或生产流量结论。
+## Day 5 三策略配对批次
+
+```sh
+node src/batch.mjs examples/experiments/policies.json > experiments/local/policies.raw.json
+node src/summarize.mjs experiments/local/policies.raw.json > experiments/local/policies.summary.json
+cmp examples/experiments/policies.raw.json experiments/local/policies.raw.json
+cmp examples/experiments/policies.summary.json experiments/local/policies.summary.json
+```
+
+先按上文创建 `experiments/local/`。新 `policies.json` 使用原六输入，另加 `waiting-weighted-regression` 反例；每个输入运行全部三个策略，共 7 输入、21 条运行、每策略 60 个任务。FIFO/SJF/waiting-weighted 的总等待分别为 438/331/393，最大等待分别为 33/36/33，总 turnaround 分别为 642/535/597。三者总 makespan 为 359、busy 为 204、idle 为 155。完整手算依据、限制和平均等待见 [POLICIES.md](POLICIES.md)。
+
+原 `baselines.json` 的输入和策略选择不变；其 raw 仅更新源码哈希，summary 随之更新 raw 哈希，既有数值结果保持不变。两份 manifest 的输入集合不同，不能把七输入汇总和六输入汇总直接比较。
+
+策略描述现在统一来自 `getPolicyDescriptor`，固定权重 1 显式保存在 raw；未知参数、改变/遗漏权重、未知版本和不符合所记录策略的时间线均拒绝。输出结构和 FIFO/SJF 语义未改变，因此协议仍为 `scheduler-experiment-v1`，当前 reader 可核验旧基准 raw。没有训练结果、可调权重 API、统计显著性或生产流量结论。

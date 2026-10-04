@@ -146,3 +146,34 @@ CI 的官方 checkout/setup-node v7 操作已锁定到已核验的完整提交 S
 当前未解决功能阻塞：无。已知限制：摘要重算独立于环境的状态转移实现，但共享 workload 校验和策略选择函数；哈希用于内容关联和源码对照，不提供可信签名或来源认证。归档 source hash 只核验格式，不要求与本机源码相同；未知协议或语义不兼容变更需要版本升级。聚合超过安全整数域须拆分批次；小规模固定样本不代表真实流量，不提供置信区间，也不能据此推导全局最优。用户写在任务 ID 中的数据仍会进入 raw，公开新输入前需要自行审查。源码注释变化也会改变源码哈希，修改已记录源码后须重新生成、审查固定 raw/summary。
 
 下一次第一步：核验 Day 4 实际远程 `main` SHA 与 Node.js 22/24 CI；成功后按 ROADMAP Day 5 固定策略扩展约定、增加带等待时间权重的贪心策略，在同一批输入上与 FIFO/SJF 对照，补充改善和退化案例及合法动作测试。如本阶段发布失败先恢复发布，不能重复制造 Day 4 增量、空提交或回填日期。
+
+## Day 5 验收快照
+
+- 实际日期/时区：2026-10-04（UTC），Day 5 功能发布前；之前的 Day 1–4 记录保留为历史快照
+- 恢复检查：云端 checkout 干净，起点为 `ed21088f7694c47c2886d75cd68275e19656617d`，与远程 `main` 一致；未发现仓库级 AGENTS.md 或附加技能要求，未覆盖其他人的改动
+- Day 4 发布核验：该 SHA 的 [CI run 37111925060](https://github.com/a123i/reproducible-scheduler-lab/actions/runs/37111925060) 为 completed/success；`test (22)` 和 `test (24)` 均成功；修改前本地重跑 148 项测试全部通过
+- 新增 `waiting-weighted` / `waitingWeighted`，最小化 `duration - waitingWeight × (time - release)`；固定权重 1，以 BigInt 精确比较，平局仍按 `(release, Unicode 代码点 id)`；只选择 ready 动作、无抢占、无观察修改或隐式跨调用状态
+- 策略注册表统一绑定名称、版本、固定参数及函数；`getPolicyDescriptor` 返回独立数据快照，CLI 帮助与查找和批实验溯源均复用注册表；FIFO/SJF 名称、版本、输出和选择语义不变
+- 新增 [POLICIES.md](POLICIES.md)，记录策略扩展契约、公式、固定参数与版本约定、手算改善/退化和局限；README、EXPERIMENTS、路线图与 CI 同步更新
+- 原六输入 × FIFO/SJF 批次保持原指标，仅因源码改变再生成 source hash/raw hash；新 `examples/experiments/policies.json` 加入三任务反例并在全部七输入上比较三策略，共 21 条 raw 运行，每策略 60 个任务
+- 固定新批次总等待 FIFO/SJF/waiting-weighted 为 438/331/393，最坏等待为 33/36/33；三者总 makespan/busy/idle 为 359/204/155
+- 实际云端环境：Node.js 24.19.0、npm 11.9.0。项目仍为零第三方依赖，运行和测试无需安装包或联网；npm 的既有 http-proxy 配置警告及版本提示不影响退出状态。本地未单独运行 Node.js 22，需以发布后同一 SHA 的 CI 为准
+- 未计时，不填写工时
+
+| 项目 | 实际执行与结果 |
+| --- | --- |
+| 完整测试 | 最终 `npm test`：163 项通过，0 失败，0 skipped，退出码 0 |
+| 加权策略契约 | 覆盖合法 ready 动作、终止/空 ready、同 score 按 release/id 平局、Unicode、冻结观察、顺序重排、不访问 pending/completed、独立重复调用、有效 workload 的安全整数边界和负 score |
+| 参考选择 | 100 个固定 seed、每个 15 个任务，逐步与独立小整数参考排序比较，1500 个动作全部合法且一致 |
+| 手算反例 | fairness-tradeoff 中最坏等待相对 SJF 由 6 降到 5，但总等待 14 升到 18；新三任务反例中总等待 6 升到 9，而最坏等待均为 5；完整时间线和每任务指标均被测试核验 |
+| 版本与归档 | 固定参数记录和快照隔离通过；修改/遗漏权重、未知版本、额外参数、将不符策略的 SJF 时间线冒充加权结果均被明确拒绝 |
+| 原有兼容检查 | `npm run demo` 成功；四组生成 CLI 与提交 fixtures 的 `cmp` 全部一致；四个生成输入各运行三策略，12 条调度命令成功 |
+| 固定批实验 | baselines 和 policies 两份 manifest 均重复生成 raw 字节一致，且与归档 `cmp` 一致；两份汇总从 raw 独立重算后与归档 `cmp` 一致 |
+| 独立复核 | 独立重跑 163 项测试通过；另一套 BigInt 参考实现核验 7381 个穷举小工作负载、22143 个策略结果，以及 3000 个接近 MAX_SAFE_INTEGER 的结果，全部一致；21 条新归档运行及 pooled 汇总一致；原 Day 4 raw 可用当前汇总器重现其原 summary |
+| JavaScript 与格式 | 全部 `src/*.mjs`、`test/*.mjs` 逐个 `node --check` 通过；`git diff --check` 通过 |
+| 功能 commit / 发布 | 本快照为提交前记录，Day 5 SHA 尚未生成；使用已授权 GitHub tree/commit/ref 接口做非强制快进发布，不将其称为 shell push；不创建或提取 shell 发布凭据 |
+| 同一 SHA CI | 本快照完成时 Day 5 尚未发布，因此其 CI 尚未运行；发布后须核对远程相同 SHA 的 Node.js 22/24 检查，包括两组 raw/summary 字节再生成 |
+
+当前未解决功能阻塞：无。已知限制：新策略固定权重 1，无权重扫描或自动调参；线性 score 对已就绪任务的共同时间项会抵消，所以不会仅因共同等待而反转相对顺序。有限任务环境不能证明无限到达流的饥饿性质或普遍公平性。新策略不保证平均/最大等待总能改善，也没有训练或全局最优结论。原有保守安全整数域、批聚合边界、固定样本代表性和哈希非认证限制继续适用；详见 README、POLICIES 和 EXPERIMENTS。
+
+下一次第一步：核验 Day 5 实际远程 `main` SHA 和 Node.js 22/24 CI；成功后按 ROADMAP Day 6 补齐完整三策略的边界、非法动作、reset、观察隔离及回归，用手算 fixtures 和固定 seed 属性检查交叉核验指标，并归档实际发现/解决的问题与剩余限制。如本阶段发布失败先恢复发布，不重复 Day 5、制造空提交或回填日期。

@@ -1,8 +1,8 @@
 import { readFile } from 'node:fs/promises';
-import { getPolicy } from './policies.mjs';
+import { getPolicy, policyNames } from './policies.mjs';
 import { runSchedule } from './run.mjs';
 
-const usage = 'Usage: node src/cli.mjs <workload.json> [--policy fifo|sjf]';
+const usage = `Usage: node src/cli.mjs <workload.json> [--policy ${policyNames.join('|')}]`;
 
 function parseArguments(args) {
   if (args.length === 1 && args[0] === '--help') return { help: true };
@@ -11,7 +11,7 @@ function parseArguments(args) {
   let policy = 'fifo';
   if (args.length > 1) {
     if (args.length !== 3 || args[1] !== '--policy') {
-      throw new Error(`Expected --policy fifo or --policy sjf. ${usage}`);
+      throw new Error(`Expected one --policy <name> option. ${usage}`);
     }
     policy = args[2];
     getPolicy(policy);
@@ -22,7 +22,7 @@ function parseArguments(args) {
 async function main() {
   const options = parseArguments(process.argv.slice(2));
   if (options.help) {
-    process.stdout.write(`${usage}\nRuns a deterministic single-worker FIFO or SJF schedule.\n`);
+    process.stdout.write(`${usage}\nRuns a deterministic single-worker schedule with a built-in policy.\n`);
     return;
   }
   let workload;

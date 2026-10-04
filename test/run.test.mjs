@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { policyNames } from '../src/policies.mjs';
 import { runSchedule } from '../src/run.mjs';
 
 const fixture = (name) => JSON.parse(readFileSync(new URL(`../examples/${name}.json`, import.meta.url), 'utf8'));
@@ -65,7 +66,7 @@ test('runner defaults to FIFO and preserves inputs and reproducibility across pe
   const input = fixture('fairness-tradeoff');
   const before = structuredClone(input);
   assert.deepEqual(runSchedule(input), runSchedule(input, 'fifo'));
-  for (const policy of ['fifo', 'sjf']) {
+  for (const policy of policyNames) {
     const result = runSchedule(input, policy);
     assert.deepEqual(runSchedule(input, policy), result);
     assert.deepEqual(runSchedule({ ...input, tasks: [...input.tasks].reverse() }, policy), result);
@@ -76,8 +77,8 @@ test('runner defaults to FIFO and preserves inputs and reproducibility across pe
   assert.deepEqual(input, before);
 });
 
-test('both policies handle empty workloads with zero-valued metrics', () => {
-  for (const policy of ['fifo', 'sjf']) {
+test('all policies handle empty workloads with zero-valued metrics', () => {
+  for (const policy of policyNames) {
     assert.deepEqual(runSchedule({ schemaVersion: 1, tasks: [] }, policy), {
       schemaVersion: 1, policy, schedule: [], metrics: {
         completedTasks: 0, makespan: 0, totalWaiting: 0, meanWaiting: 0,
@@ -87,8 +88,8 @@ test('both policies handle empty workloads with zero-valued metrics', () => {
   }
 });
 
-test('tiny workload preserves idle advancement and gives identical schedules under both policies', () => {
-  for (const policy of ['fifo', 'sjf']) {
+test('tiny workload preserves idle advancement and gives identical schedules under all policies', () => {
+  for (const policy of policyNames) {
     const result = runSchedule(fixture('tiny'), policy);
     assert.deepEqual(result.metrics, metrics(3, 9, 2, 2, 6, 8));
     assert.deepEqual(result.schedule.map(({ id }) => id), ['A', 'B', 'C']);
@@ -97,7 +98,51 @@ test('tiny workload preserves idle advancement and gives identical schedules und
 
 test('runner rejects unknown policies even for empty input and validates workloads', () => {
   assert.throws(() => runSchedule({ schemaVersion: 1, tasks: [] }, 'constructor'), /Unknown policy/);
-  for (const policy of ['fifo', 'sjf']) {
+  for (const policy of policyNames) {
     assert.throws(() => runSchedule({ schemaVersion: 1, tasks: [{ id: 'A', release: 0, duration: 0 }] }, policy));
   }
+});
+
+test('waiting-weighted matches SJF on simultaneous arrivals', () => {
+  const input = fixture('policy-comparison');
+  const weighted = runSchedule(input, 'waiting-weighted');
+  const sjf = runSchedule(input, 'sjf');
+  assert.deepEqual(weighted.schedule, sjf.schedule);
+  assert.deepEqual(weighted.metrics, sjf.metrics);
+});
+
+test('waiting-weighted reduces the fairness fixture maximum but increases total wait versus SJF', () => {
+  const input = fixture('fairness-tradeoff');
+  const weighted = runSchedule(input, 'waiting-weighted');
+  assert.deepEqual(weighted.schedule, [
+    { id: 'A', start: 0, finish: 3, waiting: 0, turnaround: 3 },
+    { id: 'short-1', start: 3, finish: 4, waiting: 2, turnaround: 3 },
+    { id: 'short-2', start: 4, finish: 5, waiting: 2, turnaround: 3 },
+    { id: 'long', start: 5, finish: 8, waiting: 4, turnaround: 7 },
+    { id: 'short-3', start: 8, finish: 9, waiting: 5, turnaround: 6 },
+    { id: 'short-4', start: 9, finish: 10, waiting: 5, turnaround: 6 },
+  ]);
+  assert.deepEqual(weighted.metrics, metrics(6, 10, 18, 5, 10, 28));
+  assert.ok(weighted.metrics.totalWaiting > runSchedule(input, 'sjf').metrics.totalWaiting);
+  assert.ok(weighted.metrics.maxWaiting < runSchedule(input, 'sjf').metrics.maxWaiting);
+  assert.ok(weighted.metrics.totalWaiting < runSchedule(input, 'fifo').metrics.totalWaiting);
+});
+
+test('waiting-weighted can increase mean waiting without improving maximum waiting', () => {
+  const input = fixture('waiting-weighted-regression');
+  const weighted = runSchedule(input, 'waiting-weighted');
+  const sjf = runSchedule(input, 'sjf');
+  assert.deepEqual(weighted.schedule, [
+    { id: 'block', start: 0, finish: 5, waiting: 0, turnaround: 5 },
+    { id: 'old-long', start: 5, finish: 9, waiting: 4, turnaround: 8 },
+    { id: 'new-short', start: 9, finish: 10, waiting: 5, turnaround: 6 },
+  ]);
+  assert.deepEqual(sjf.schedule, [
+    { id: 'block', start: 0, finish: 5, waiting: 0, turnaround: 5 },
+    { id: 'new-short', start: 5, finish: 6, waiting: 1, turnaround: 2 },
+    { id: 'old-long', start: 6, finish: 10, waiting: 5, turnaround: 9 },
+  ]);
+  assert.deepEqual(weighted.metrics, metrics(3, 10, 9, 5, 10, 19));
+  assert.deepEqual(sjf.metrics, metrics(3, 10, 6, 5, 10, 16));
+  assert.deepEqual(weighted.schedule, runSchedule(input, 'fifo').schedule);
 });

@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { isDeepStrictEqual } from 'node:util';
 import { validateWorkload } from './env.mjs';
 import { compareTasks } from './order.mjs';
-import { getPolicy } from './policies.mjs';
+import { getPolicy, getPolicyDescriptor } from './policies.mjs';
 import { runSchedule } from './run.mjs';
 import { replayWorkload } from './workload.mjs';
 
@@ -66,10 +66,10 @@ function policies(names) {
   nonemptyArray(names, 'Policies');
   const seen = new Set();
   return Array.from(names, (name) => {
-    getPolicy(name);
+    const descriptor = getPolicyDescriptor(name);
     if (seen.has(name)) throw new TypeError('Policies must not contain duplicates.');
     seen.add(name);
-    return { name, version: `${name}-v1`, parameters: {} };
+    return descriptor;
   });
 }
 

@@ -1,6 +1,6 @@
 # Reproducible Scheduler Lab
 
-可复现的任务调度仿真项目，用来比较调度规则、核验指标，并保留可重跑的实验结果。目前提供确定性的单 worker、非抢占调度环境、FIFO/SJF 基准策略、固定 seed 工作负载生成器、命令行入口、等待时间公平性核验和可独立重算的固定批实验工具。具体计划见 [7 日路线图](docs/ROADMAP.md)。
+可复现的任务调度仿真项目，用来比较调度规则、核验指标，并保留可重跑的实验结果。目前提供确定性的单 worker、非抢占调度环境、FIFO/SJF 与等待加权贪心策略、固定 seed 工作负载生成器、命令行入口、等待时间公平性核验和可独立重算的固定批实验工具。具体计划见 [7 日路线图](docs/ROADMAP.md)。
 
 项目采用 Node.js ESM 和内置测试工具，无第三方运行或测试依赖。运行、测试不需要下载包或联网。
 
@@ -14,13 +14,16 @@ npm run demo
 node src/cli.mjs examples/tiny.json --policy fifo
 node src/cli.mjs examples/tiny.json --policy sjf
 node src/cli.mjs examples/fairness-tradeoff.json --policy sjf
+node src/cli.mjs examples/fairness-tradeoff.json --policy waiting-weighted
 node src/generate.mjs examples/generator/high-load.json
 node src/cli.mjs examples/generated/high-load.json --policy sjf
 node src/batch.mjs examples/experiments/baselines.json
 node src/summarize.mjs examples/experiments/baselines.raw.json
+node src/batch.mjs examples/experiments/policies.json
+node src/summarize.mjs examples/experiments/policies.raw.json
 ```
 
-无需执行 `npm install`。调度命令 `src/cli.mjs` 支持 `--policy fifo`（默认）与 `--policy sjf`。未知策略会返回非零退出码。
+无需执行 `npm install`。调度命令 `src/cli.mjs` 支持 `--policy fifo`（默认）、`--policy sjf` 和 `--policy waiting-weighted`。未知策略会返回非零退出码。
 
 ## 调度规则
 
@@ -101,13 +104,15 @@ console.log(observation, result);
 
 ## 共享策略与完整运行 API
 
-`src/policies.mjs` 导出 `fifo(observation)`、`sjf(observation)`、`getPolicy(name)` 和只读 `policyNames`：
+`src/policies.mjs` 导出 `fifo(observation)`、`sjf(observation)`、`waitingWeighted(observation)`、`getPolicy(name)`、`getPolicyDescriptor(name)` 和只读 `policyNames`：
 
 - 输入为 `SchedulingEnv` 返回的有效观察；策略仅选择 `ready` 中的任务，不查看 `pending` 来提前空闲，也不修改观察
 - 输出是一个就绪任务 ID；`terminated` 时返回 `null`，调用者不能将它传给 `step`
 - 非终止但 `ready` 为空的观察不符合内核约定，策略会抛出错误
 - FIFO 比较 `(release, id)`；SJF 比较 `(duration, release, id)`。ID 使用共享的 Unicode 代码点比较，不受语言设置、输入数组或 ready 数组顺序影响
 - SJF 使用输入中已知的完整 duration，属于离线仿真的已知时长基准；它不会抢占正在运行的任务
+- waiting-weighted 最小化 `duration - waitingWeight × (time - release)`，固定 `waitingWeight = 1`，平局按 `(release, id)`；BigInt 打分比较保证整数精确，仍只选择就绪任务
+- `getPolicyDescriptor(name)` 返回独立的名称、语义版本及完整固定参数；运行器和批实验共用同一注册表。没有可变权重 CLI，不允许在归档中改权重却沿用原运行
 
 `src/run.mjs` 导出与 CLI 共用的运行器：
 
@@ -141,6 +146,21 @@ node src/cli.mjs examples/fairness-tradeoff.json --policy sjf
 错开到达的 `fairness-tradeoff.json` 中，SJF 将平均等待从 `22/6` 降到 `14/6`，但最大等待从 **5 增至 6**，长任务等待从 **2 增至 6**。两者结束时间均为 10。这说明平均等待改善并不保证个体等待或最坏等待改善。
 
 完整手算时间线、指标和局限见 [基准核验](docs/BASELINES.md)。这些有限输入不证明某种策略在任意到达模式下最优；本仿真也没有持续无限到达，不能将有限等待示例称为已观测到无限饥饿。
+
+## 等待加权策略与对照
+
+```sh
+node src/cli.mjs examples/fairness-tradeoff.json --policy waiting-weighted
+node src/cli.mjs examples/waiting-weighted-regression.json --policy waiting-weighted
+node src/batch.mjs examples/experiments/policies.json
+node src/summarize.mjs examples/experiments/policies.raw.json
+```
+
+在 fairness-tradeoff 中，加权策略总等待为 18、最大等待为 5：相对 FIFO 的总等待 22 有所改善；相对 SJF 的总等待 14、最大等待 6，则牺牲平均等待换取较小的最坏等待。新增三任务反例中，加权策略总等待 9，SJF 为 6，两者最大等待均为 5，说明权重不保证产生公平性收益。
+
+七个相同输入 × 三种策略的固定批次共有 21 条运行，每个策略处理 60 个任务；FIFO/SJF/加权策略的总等待分别为 438/331/393，最坏等待分别为 33/36/33。原六输入 FIFO/SJF 批次保持不变，两个批次的聚合不要混比。
+
+因为 `duration - (time - release) = duration + release - time`，对两个已就绪任务，共同等待不会改变其相对顺序；这不是动态优先级反转或无饥饿保证。完整扩展契约、固定权重与版本规则、手算反例和离线重跑命令见 [策略扩展与对照](docs/POLICIES.md)。
 
 ## 固定 seed 工作负载
 
@@ -207,12 +227,13 @@ docs/HANDOFF.md  实际状态、缺项和下一次恢复步骤
 docs/BASELINES.md 手算基准、指标与公平性权衡
 docs/WORKLOADS.md 生成协议、参数、场景与复现步骤
 docs/EXPERIMENTS.md 批实验、溯源、独立核验和汇总定义
+docs/POLICIES.md 策略契约、等待权重、改善/退化案例与配对比较
 ```
 
 ## 当前范围与后续工作
 
-Day 1–4 已实现调度内核、FIFO/SJF 共享策略与 CLI、最大等待指标、手算示例、固定 seed 生成器和场景 fixtures、批实验/原始结果/独立汇总、测试与文档。实际验收、commit 与发布状态以 [交接记录](docs/HANDOFF.md) 为准。
+Day 1–5 已实现调度内核、FIFO/SJF/等待加权共享策略与 CLI、固定参数版本注册表、最大等待指标、手算示例与反例、固定 seed 生成器和场景 fixtures、批实验/原始结果/独立汇总、测试与文档。实际验收、commit 与发布状态以 [交接记录](docs/HANDOFF.md) 为准。
 
-加权等待策略、进一步回归核验和最终报告属于后续计划，尚不能当作现有功能。此项目没有训练结果，也不承诺某种策略会在所有工作负载上胜出。
+进一步回归核验和最终报告属于后续计划，尚不能当作已完成产物。此项目没有训练结果，也不承诺某种策略会在所有工作负载上胜出。
 
 开发记录只包含实际完成的工作和实际执行的测试。每日提交需要当天存在有意义且通过验收的改动；不使用空提交、回填日期或虚构工时补齐计划。公开发布仅包含本项目代码、测试、示例与文档。

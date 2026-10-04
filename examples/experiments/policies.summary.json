@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
   "experimentVersion": "scheduler-experiment-v1",
-  "rawSha256": "4aa936b838db88dea601290f3903bb6e167b3f48c820a31980cefe1db685b920",
-  "inputCount": 6,
-  "runCount": 12,
+  "rawSha256": "d35a5e4eec1e7977e93bc60ddec732a7eda20f280d0b3cd6bb78e201067c867d",
+  "inputCount": 7,
+  "runCount": 21,
   "metricDefinitions": {
     "runCount": "Number of input workloads evaluated by this policy, including empty workloads.",
     "completedTasks": "Sum of completedTasks across this policy's runs.",
@@ -20,31 +20,45 @@
   "policies": [
     {
       "policy": "fifo",
-      "runCount": 6,
-      "completedTasks": 57,
-      "totalWaiting": 429,
-      "meanWaiting": 7.526315789473684,
+      "runCount": 7,
+      "completedTasks": 60,
+      "totalWaiting": 438,
+      "meanWaiting": 7.3,
       "maxWaiting": 33,
-      "totalTurnaround": 623,
-      "meanTurnaround": 10.929824561403509,
-      "totalMakespan": 349,
-      "totalBusyTime": 194,
+      "totalTurnaround": 642,
+      "meanTurnaround": 10.7,
+      "totalMakespan": 359,
+      "totalBusyTime": 204,
       "totalIdleTime": 155,
-      "pooledUtilization": 0.5558739255014327
+      "pooledUtilization": 0.5682451253481894
     },
     {
       "policy": "sjf",
-      "runCount": 6,
-      "completedTasks": 57,
-      "totalWaiting": 325,
-      "meanWaiting": 5.701754385964913,
+      "runCount": 7,
+      "completedTasks": 60,
+      "totalWaiting": 331,
+      "meanWaiting": 5.516666666666667,
       "maxWaiting": 36,
-      "totalTurnaround": 519,
-      "meanTurnaround": 9.105263157894736,
-      "totalMakespan": 349,
-      "totalBusyTime": 194,
+      "totalTurnaround": 535,
+      "meanTurnaround": 8.916666666666666,
+      "totalMakespan": 359,
+      "totalBusyTime": 204,
       "totalIdleTime": 155,
-      "pooledUtilization": 0.5558739255014327
+      "pooledUtilization": 0.5682451253481894
+    },
+    {
+      "policy": "waiting-weighted",
+      "runCount": 7,
+      "completedTasks": 60,
+      "totalWaiting": 393,
+      "meanWaiting": 6.55,
+      "maxWaiting": 33,
+      "totalTurnaround": 597,
+      "meanTurnaround": 9.95,
+      "totalMakespan": 359,
+      "totalBusyTime": 204,
+      "totalIdleTime": 155,
+      "pooledUtilization": 0.5682451253481894
     }
   ]
 }

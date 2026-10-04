@@ -251,3 +251,36 @@ test('raw stdout does not include paths, environment values or ignored workload 
   assert.equal(result.stdout.includes(path), false);
   assert.deepEqual(JSON.parse(result.stdout).inputs[0].workload, simpleWorkload);
 });
+
+test('three-policy CLI batch and summary reproduce the archived matched comparison', () => {
+  const raw = run(batch, [example('policies.json')]);
+  assertSuccess(raw);
+  assert.equal(raw.stdout, readFileSync(example('policies.raw.json'), 'utf8'));
+  assert.equal(run(batch, [example('policies.json')]).stdout, raw.stdout);
+  const data = JSON.parse(raw.stdout);
+  assert.equal(data.inputs.length, 7);
+  assert.equal(data.runs.length, 21);
+  assert.deepEqual(data.policies.map(({ name }) => name), ['fifo', 'sjf', 'waiting-weighted']);
+  assert.deepEqual(data.policies[2].parameters, { waitingWeight: 1 });
+  const summary = run(summarize, [example('policies.raw.json')]);
+  assertSuccess(summary);
+  assert.equal(summary.stdout, readFileSync(example('policies.summary.json'), 'utf8'));
+  assert.equal(run(summarize, [example('policies.raw.json')]).stdout, summary.stdout);
+  const policies = JSON.parse(summary.stdout).policies;
+  assert.deepEqual(policies.map(({ policy, totalWaiting, maxWaiting }) => [policy, totalWaiting, maxWaiting]), [
+    ['fifo', 438, 33], ['sjf', 331, 36], ['waiting-weighted', 393, 33],
+  ]);
+  for (const metrics of policies) {
+    assert.equal(metrics.runCount, 7);
+    assert.equal(metrics.completedTasks, 60);
+    assert.equal(metrics.totalMakespan, 359);
+    assert.equal(metrics.totalBusyTime, 204);
+    assert.equal(metrics.totalIdleTime, 155);
+  }
+});
+
+test('summary CLI rejects altered waiting weights without a partial document', (t) => {
+  const raw = JSON.parse(readFileSync(example('policies.raw.json'), 'utf8'));
+  raw.policies[2].parameters.waitingWeight = 2;
+  assertError(run(summarize, [write(join(directory(t), 'changed-weight.json'), raw)]));
+});
