@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "tasks": [
+    { "id": "𐀀", "release": 14, "duration": 1 },
+    { "id": "end", "release": 16, "duration": 2 },
+    { "id": "old", "release": 3, "duration": 4 },
+    { "id": "", "release": 14, "duration": 1 },
+    { "id": "short", "release": 6, "duration": 1 },
+    { "id": "block", "release": 2, "duration": 5 }
+  ]
+}

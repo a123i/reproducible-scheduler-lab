@@ -9,6 +9,7 @@
   },
   "scripts": {
     "test": "node --test",
+    "test:regression": "node --test test/regression.test.mjs",
     "demo": "node src/cli.mjs examples/tiny.json"
   }
 }

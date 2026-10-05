@@ -228,12 +228,26 @@ docs/BASELINES.md 手算基准、指标与公平性权衡
 docs/WORKLOADS.md 生成协议、参数、场景与复现步骤
 docs/EXPERIMENTS.md 批实验、溯源、独立核验和汇总定义
 docs/POLICIES.md 策略契约、等待权重、改善/退化案例与配对比较
+docs/REGRESSION.md 独立参考实现、手算前缀、属性检查和边界回归
 ```
+
+## 回归与指标交叉核验
+
+```sh
+npm run test:regression
+node src/cli.mjs examples/regression-boundaries.json --policy fifo
+node src/cli.mjs examples/regression-boundaries.json --policy sjf
+node src/cli.mjs examples/regression-boundaries.json --policy waiting-weighted
+```
+
+`npm test` 已包含该回归套件，无需另装依赖。测试侧独立 BigInt 参考实现不调用内核、共享排序或策略选择函数；7,381 个小域穷举输入和 128 个固定 seed 配置覆盖完整三策略，核验完整时间线、每一步观察/指标、非法动作不改变状态、任意前缀 reset 与陈旧快照隔离。等待总量还通过就绪队列长度的时间积分交叉核验，并验证累计 reward 等于负总等待。
+
+新手算 fixture 包含初始/中途 idle、恰好在完成时到达、Unicode 平局和加权 score 平局：三策略 makespan 18、busy 14、idle 4；FIFO/加权总等待 10，SJF 为 7，最坏等待均为 5。两份已归档批实验还与独立参考调度和 BigInt 汇总比较。完整范围、手算前缀表、安全整数边界、已补齐的覆盖缺口与仍有限制见 [回归核验](docs/REGRESSION.md)。
 
 ## 当前范围与后续工作
 
-Day 1–5 已实现调度内核、FIFO/SJF/等待加权共享策略与 CLI、固定参数版本注册表、最大等待指标、手算示例与反例、固定 seed 生成器和场景 fixtures、批实验/原始结果/独立汇总、测试与文档。实际验收、commit 与发布状态以 [交接记录](docs/HANDOFF.md) 为准。
+Day 1–6 已实现调度内核、FIFO/SJF/等待加权共享策略与 CLI、固定参数版本注册表、最大等待指标、手算示例与反例、固定 seed 生成器和场景 fixtures、批实验/原始结果/独立汇总、完整三策略的回归与指标交叉核验、测试与文档。实际验收、commit 与发布状态以 [交接记录](docs/HANDOFF.md) 为准。
 
-进一步回归核验和最终报告属于后续计划，尚不能当作已完成产物。此项目没有训练结果，也不承诺某种策略会在所有工作负载上胜出。
+最终可复现实验报告与干净目录交付验证属于 Day 7 后续计划，尚不能当作已完成产物。此项目没有训练结果，也不承诺某种策略会在所有工作负载上胜出。
 
 开发记录只包含实际完成的工作和实际执行的测试。每日提交需要当天存在有意义且通过验收的改动；不使用空提交、回填日期或虚构工时补齐计划。公开发布仅包含本项目代码、测试、示例与文档。

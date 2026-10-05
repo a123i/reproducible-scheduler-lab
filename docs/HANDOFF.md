@@ -177,3 +177,38 @@ CI 的官方 checkout/setup-node v7 操作已锁定到已核验的完整提交 S
 当前未解决功能阻塞：无。已知限制：新策略固定权重 1，无权重扫描或自动调参；线性 score 对已就绪任务的共同时间项会抵消，所以不会仅因共同等待而反转相对顺序。有限任务环境不能证明无限到达流的饥饿性质或普遍公平性。新策略不保证平均/最大等待总能改善，也没有训练或全局最优结论。原有保守安全整数域、批聚合边界、固定样本代表性和哈希非认证限制继续适用；详见 README、POLICIES 和 EXPERIMENTS。
 
 下一次第一步：核验 Day 5 实际远程 `main` SHA 和 Node.js 22/24 CI；成功后按 ROADMAP Day 6 补齐完整三策略的边界、非法动作、reset、观察隔离及回归，用手算 fixtures 和固定 seed 属性检查交叉核验指标，并归档实际发现/解决的问题与剩余限制。如本阶段发布失败先恢复发布，不重复 Day 5、制造空提交或回填日期。
+
+## Day 6 验收快照
+
+- 实际日期/时区：2026-10-05（UTC），Day 6 回归增量发布前；之前的 Day 1–5 记录保留为历史快照
+- 恢复检查：云端 checkout 干净，起点为 `bea725133e0b5fff897437158619c236a5c4f631`，本地/远程 `main` SHA 与 tree `22657044538e9099267c851cc8a8ed7ce48651f3` 一致；未发现仓库级 AGENTS.md 或附加技能要求，没有覆盖他人的改动
+- Day 5 发布核验：上述 SHA 的 [CI run 37189442649](https://github.com/a123i/reproducible-scheduler-lab/actions/runs/37189442649) 为 completed/success，`test (22)` 与 `test (24)` 均成功；修改前本地重跑 163 项测试全部通过
+- 新增 `test/regression.test.mjs`：独立 BigInt 调度/指标参考，不复用生产环境、策略、排序或聚合实现；用等价 score 和不同 Unicode 比较路径核验完整三策略。另通过队列长度时间积分核验总等待
+- 新增 `examples/regression-boundaries.json`：六任务手算 fixture，包含初始/中途 idle、完成时恰好到达、Unicode 与等待加权 score 平局；每个前缀的 transition/reward/指标锁定为手算常量
+- 新增 [REGRESSION.md](REGRESSION.md) 和 `npm run test:regression`，说明有限穷举、固定 seed、非法动作/reset/隔离、精确边界、变形属性及归档交叉核验；完整 `npm test` 和现有 Node.js 22/24 CI 自动包含该套件
+- 本次解决的是持续回归覆盖缺口，未发现需修改生产实现的 bug；没有变更 `src/`、引擎/策略版本或已有 raw/summary。批实验字节重现保持不变
+- 实际云端环境：Node.js 24.19.0、npm 11.9.0。未安装第三方依赖；npm 的已有 http-proxy 配置警告不影响命令退出状态。本地未单独运行 Node.js 22，需以发布后相同 SHA 的 CI 为准
+- 未计时，不填写工时
+
+| 项目 | 实际执行与结果 |
+| --- | --- |
+| 完整测试 | `npm test`：177 项通过，0 失败，0 skipped，退出码 0 |
+| 专用回归 | `npm run test:regression`：14 项通过，0 失败，0 skipped；包含在上述完整测试中，不重复计数 |
+| 独立小域参考 | 7381 个 0–4 任务输入 × 三策略，共 22143 个参考结果；每个还核验反转输入，共 44286 次运行器比较，全部一致 |
+| 固定 seed 与逐步状态 | 128 组固定 seed 参数 × 三策略，共 384 个 episode；逐步核验观察、指标、合法动作、非法动作不变性、reward 守恒与终止行为，全部通过 |
+| reset / 隔离 | 三策略分别在新 fixture 的所有 0–6 个完成任务前缀 reset；污染旧输入/观察/transition/metrics 后跨全部三策略重放，并逐步污染返回快照，全部通过 |
+| 数值边界与变形 | 覆盖 MAX_SAFE_INTEGER 单任务、近上界 release/score、精确聚合/时间界的接受与 +1 拒绝；25 个 seed 输入 × 三策略的时间缩放/平移属性全部通过 |
+| 批指标交叉核验 | 两份归档 33 条 raw 结果和 pooled summary 与独立参考一致；另 26 输入 × 三策略的 78 条混合空/idle/生成结果及任务/时间加权汇总一致 |
+| 原有兼容检查 | `npm run demo` 成功；四组 generator CLI 与提交 fixtures 的 `cmp` 全部一致；四个生成输入各运行三策略，12 条 CLI 调度命令成功 |
+| 新手算 CLI | 三种策略运行新边界 fixture 均成功；makespan/busy/idle 为 18/14/4，总等待 FIFO/SJF/加权为 10/7/10，最大等待均为 5 |
+| 固定实验复跑 | baselines 和 policies 两份 manifest 各重复生成 raw，均与归档字节一致；独立 summarize 输出也与各自归档 `cmp` 一致 |
+| 独立复核 | 另一次独立 QA 重跑完整 177 项及专用 14 项测试、两批 raw/summary、四组生成、12 条策略 CLI、语法及格式均通过；复核独立 oracle、队列积分、前缀隔离、手算表与样本计数，未发现阻塞问题；另在临时副本注入 8 种指定故障，专用回归均检出，不代表全面 mutation coverage |
+| JavaScript 与格式 | 所有 `src/*.mjs`、`test/*.mjs` 逐个 `node --check` 通过；`git diff --check` 通过 |
+| 功能 commit / 发布 | 本快照为提交前记录，Day 6 SHA 尚未生成；使用已授权 GitHub tree/commit/ref 接口做非强制快进发布，不将其称为 shell push；不创建或提取 shell 发布凭据 |
+| 同一 SHA CI | 本快照完成时 Day 6 尚未发布，CI 尚未运行；发布后须核对远程相同 SHA 的 Node.js 22/24 检查与两组 raw/summary 再生成 |
+
+开发时一个拟用“大 duration”测试输入超过既有保守聚合支持域，被正确拒绝；调整为域内输入并另增精确边界 +1 拒绝测试，没有为测试放宽生产校验。这属于测试数据修正，不是生产缺陷。
+
+当前未解决功能阻塞：无。有限穷举不是对全部合法输入的证明；固定 seed 输入生成仍使用生产生成器，独立性主要覆盖调度/排序/指标；参考实现也可能共同误读规格。浮点比值、单 worker 非抢占、有限任务、保守整数支持域、批聚合边界与哈希非认证限制继续适用。完整范围和限制见 REGRESSION；不声称统计置信度、全局最优、无饥饿或真实负载代表性。
+
+下一次第一步：核验 Day 6 实际远程 `main` SHA 与 Node.js 22/24 CI；成功后按 ROADMAP Day 7 编写可复现实验方法/结果/限制报告，使每条结论可追溯到已归档输入与原始结果，验证干净目录的离线使用并准备真实可交付版本。如本阶段发布失败先恢复发布；不要重做 Day 6、制造空提交或回填日期。
