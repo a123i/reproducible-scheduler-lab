@@ -10,6 +10,7 @@
   "scripts": {
     "test": "node --test",
     "test:regression": "node --test test/regression.test.mjs",
+    "reproduce": "node scripts/reproduce.mjs",
     "demo": "node src/cli.mjs examples/tiny.json"
   }
 }

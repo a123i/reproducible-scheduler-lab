@@ -21,9 +21,12 @@ node src/batch.mjs examples/experiments/baselines.json
 node src/summarize.mjs examples/experiments/baselines.raw.json
 node src/batch.mjs examples/experiments/policies.json
 node src/summarize.mjs examples/experiments/policies.raw.json
+npm run reproduce
 ```
 
 无需执行 `npm install`。调度命令 `src/cli.mjs` 支持 `--policy fifo`（默认）、`--policy sjf` 和 `--policy waiting-weighted`。未知策略会返回非零退出码。
+
+七日完整方法、逐场景结果、证据与限制见 [最终实验报告](docs/REPORT.md)。`npm run reproduce` 会核验四个生成输入、两批重复 raw/重算 summary、33 条配对 CLI 结果和 tiny 指标，全部成功才输出完成信息；它不修改项目文件。导出固定提交到无 Git 元数据、无已安装依赖、空 npm 缓存目录的验收命令见 [交付复现](docs/REPRODUCTION.md)。
 
 ## 调度规则
 
@@ -222,6 +225,7 @@ examples/generator/ 固定 seed 生成配置
 examples/generated/ 可重放的生成输入
 examples/experiments/ 固定批次 manifest、raw JSON 和重算汇总
 test/            Node.js 内置测试
+scripts/reproduce.mjs 固定实验与交付的一键复现检查
 docs/ROADMAP.md  7 日依赖与验收计划
 docs/HANDOFF.md  实际状态、缺项和下一次恢复步骤
 docs/BASELINES.md 手算基准、指标与公平性权衡
@@ -229,6 +233,8 @@ docs/WORKLOADS.md 生成协议、参数、场景与复现步骤
 docs/EXPERIMENTS.md 批实验、溯源、独立核验和汇总定义
 docs/POLICIES.md 策略契约、等待权重、改善/退化案例与配对比较
 docs/REGRESSION.md 独立参考实现、手算前缀、属性检查和边界回归
+docs/REPORT.md    七日方法、结果、证据与限制报告
+docs/REPRODUCTION.md 干净源文件目录、离线配置与交付复跑
 ```
 
 ## 回归与指标交叉核验
@@ -246,8 +252,8 @@ node src/cli.mjs examples/regression-boundaries.json --policy waiting-weighted
 
 ## 当前范围与后续工作
 
-Day 1–6 已实现调度内核、FIFO/SJF/等待加权共享策略与 CLI、固定参数版本注册表、最大等待指标、手算示例与反例、固定 seed 生成器和场景 fixtures、批实验/原始结果/独立汇总、完整三策略的回归与指标交叉核验、测试与文档。实际验收、commit 与发布状态以 [交接记录](docs/HANDOFF.md) 为准。
+Day 1–7 已实现调度内核、FIFO/SJF/等待加权共享策略与 CLI、固定参数版本注册表、最大等待指标、手算示例与反例、固定 seed 生成器和场景 fixtures、批实验/原始结果/独立汇总、完整三策略的回归与指标交叉核验、最终实验报告及干净源文件目录交付检查。实际验收、commit 与发布状态以 [交接记录](docs/HANDOFF.md)、[报告](docs/REPORT.md) 和对应远程记录为准。
 
-最终可复现实验报告与干净目录交付验证属于 Day 7 后续计划，尚不能当作已完成产物。此项目没有训练结果，也不承诺某种策略会在所有工作负载上胜出。
+七日范围到 Day 7 交付结束；没有自动扩展成后续开发阶段。此项目没有训练结果，也不承诺某种策略会在所有工作负载上胜出。npm offline 配置下的干净目录复跑不等于操作系统级网络隔离，具体证据边界见交付复现文档。
 
 开发记录只包含实际完成的工作和实际执行的测试。每日提交需要当天存在有意义且通过验收的改动；不使用空提交、回填日期或虚构工时补齐计划。公开发布仅包含本项目代码、测试、示例与文档。

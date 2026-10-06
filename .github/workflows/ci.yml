@@ -43,3 +43,24 @@ jobs:
           cmp examples/experiments/policies.raw.json "$RUNNER_TEMP/policies.raw.json"
           node src/summarize.mjs "$RUNNER_TEMP/policies.raw.json" > "$RUNNER_TEMP/policies.summary.json"
           cmp examples/experiments/policies.summary.json "$RUNNER_TEMP/policies.summary.json"
+      - name: Validate source-only delivery without installing packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          delivery=$(mktemp -d "$RUNNER_TEMP/scheduler-delivery.XXXXXX")
+          mkdir "$delivery/source" "$delivery/home" "$delivery/cache"
+          touch "$delivery/user.npmrc" "$delivery/global.npmrc"
+          git archive --format=tar HEAD | tar -xf - -C "$delivery/source"
+          cd "$delivery/source"
+          test ! -e .git
+          test ! -e node_modules
+          offline_npm() {
+            env -i PATH="$PATH" HOME="$delivery/home" \
+              npm_config_offline=true npm_config_update_notifier=false \
+              npm_config_cache="$delivery/cache" npm_config_userconfig="$delivery/user.npmrc" \
+              npm_config_globalconfig="$delivery/global.npmrc" npm "$@"
+          }
+          offline_npm test
+          offline_npm run demo
+          offline_npm run reproduce
+          test ! -e node_modules

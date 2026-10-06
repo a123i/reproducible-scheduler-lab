@@ -212,3 +212,33 @@ CI 的官方 checkout/setup-node v7 操作已锁定到已核验的完整提交 S
 当前未解决功能阻塞：无。有限穷举不是对全部合法输入的证明；固定 seed 输入生成仍使用生产生成器，独立性主要覆盖调度/排序/指标；参考实现也可能共同误读规格。浮点比值、单 worker 非抢占、有限任务、保守整数支持域、批聚合边界与哈希非认证限制继续适用。完整范围和限制见 REGRESSION；不声称统计置信度、全局最优、无饥饿或真实负载代表性。
 
 下一次第一步：核验 Day 6 实际远程 `main` SHA 与 Node.js 22/24 CI；成功后按 ROADMAP Day 7 编写可复现实验方法/结果/限制报告，使每条结论可追溯到已归档输入与原始结果，验证干净目录的离线使用并准备真实可交付版本。如本阶段发布失败先恢复发布；不要重做 Day 6、制造空提交或回填日期。
+
+## Day 7 验收快照与七日交付
+
+- 实际日期/时区：2026-10-06（UTC），Day 7 交付增量发布前；上方 Day 1–6 快照保留，不把当时“尚未发布”误读为当前状态
+- 恢复检查：云端 checkout 干净，起点为 `b2c1879c6d1c77c6f5b5369311c76872458f6730`，本地/远程 `main` 和 tree `acb8b7325644d7b46458de2a782f0def85033dd3` 一致；没有仓库 AGENTS.md 或附加技能要求，没有覆盖用户改动
+- Day 6 发布核验：[CI run 37287120288](https://github.com/a123i/reproducible-scheduler-lab/actions/runs/37287120288) 对上述 SHA 为 completed/success，Node.js 22/24 作业均成功；修改前完整 177 项测试通过
+- 新增 [REPORT.md](REPORT.md)：最终方法、输入与 raw/summary 路径、逐场景及配对汇总、改善和反例、六次已发布功能提交/CI 链接及七日范围限制。数据由现有归档支持，没有改实验输入、归档或生产 `src/`
+- 新增 `scripts/reproduce.mjs` 和 `npm run reproduce`：四组生成输入逐字节比较、两份 raw 各重复生成、两份 summary 从新 raw 重算、33 条 CLI 结果与批次配对，以及 tiny 手算指标。只在新临时目录写中间 raw，结束清理，不覆盖归档
+- 新增 `test/reproduce.test.mjs`：源文件独立目录、不同 cwd/空格路径、重复运行不改项目文件、参数错误、生成/raw/summary 字节变化、缺失输入和 CLI 漂移，共七项回归
+- 新增 [REPRODUCTION.md](REPRODUCTION.md)，并在现有 Node.js 22/24 CI 增加从 HEAD archive 导出的干净源文件目录验收；空 HOME/cache、npm offline、独立空 npm 配置文件下完整执行 test/demo/reproduce。该配置不等于 OS 网络隔离
+- 实际本地环境：Linux、Node.js 24.19.0、npm 11.9.0；没有下载或安装第三方依赖。本地未单独运行 Node.js 22，以相同发布 SHA 的远程 CI 为准
+- 未计时，不填写工时；提交不能证明工时或任何外部平台的资格。七日范围至此结束，不自动开始第八日或其他扩展
+
+| 项目 | 实际执行与结果 |
+| --- | --- |
+| 完整测试 | `npm test`：184 项通过，0 失败、0 skipped，退出码 0；包含新增 7 项，不把子样本数计为测试数 |
+| 新交付回归 | `node --test test/reproduce.test.mjs`：7 项全部通过，包含无 `.git`/`node_modules` 的复制目录和两次重复复现 |
+| 干净目录全验收 | 将待交付暂存 tree 用 `git archive` 提取到新临时目录，空 HOME/npm cache、清空继承环境保留 PATH、npm offline 与禁更新提示下执行完整 `npm test`（184 项）、`npm run demo`、`npm run reproduce`，全部退出码 0；运行前后均无 node_modules |
+| 固定结果 | 四组生成 fixture、两份重复 raw、两份重算 summary 与归档字节一致；33 条独立 CLI schedule/metrics 与对应 raw 一致；tiny 保持 makespan 9、总等待 2、最大等待 2、busy/idle 6/3 |
+| 数值独立复核 | 另用独立 Python 整数调度实现复算两份归档的 33 条时间线、等待/最大等待/busy/makespan/任务数及策略聚合；原始哈希及九个源码哈希均一致，报告逐场景数值和配对百分比核对通过 |
+| 七日历史核验 | 读取 Day 1–6 的 GitHub 提交及每一 CI 的两项 Node.js 作业，全部 completed/success；UTC 日期与 REPORT 表一致，未改历史时间或制造空提交 |
+| JavaScript / 文档 / 格式 | `src/`、`scripts/`、`test/` 全部 mjs 逐个 `node --check` 通过；本地 Markdown 目标存在；CI YAML 解析成功且保留 Node.js 22/24；`git diff --check` 通过 |
+| 功能 commit / 发布 | 本快照是提交前记录，Day 7 SHA 尚未生成；计划用已授权 GitHub tree/commit/ref 接口以 expected SHA 非强制快进发布，不称为 shell push，不创建或提取凭据 |
+| 同一 SHA CI | 发布前尚未运行；交付必须另行读取同一 SHA 的 Node.js 22/24 终态，包括新的干净目录 test/demo/reproduce 步骤 |
+
+首次干净目录命令把 npm 用户/全局配置都指向 `/dev/null`，npm 11 拒绝重复加载同一路径，在测试启动前退出；已改成两个独立的新建空配置文件，按更新后的文档/CI 命令完整复跑通过。这是交付命令修正，没有修改或放宽应用校验。
+
+当前未解决功能阻塞：无。仍有限制：有限人工 fixtures、共享固定 seed、单 worker 非抢占和已知 duration、固定权重、保守整数/聚合支持域、浮点比值、参考实现可能共同误读、哈希非认证；没有训练、全局最优、无饥饿、生产代表性、墙钟性能或平台资格结论。干净目录使用 npm offline 配置，但未强制隔离网络，未在 Windows/macOS 本机实测。完整解释见 REPORT 和 REPRODUCTION。
+
+交付最后步骤：非强制发布真实 Day 7 提交；核对远程 main、本地同一 commit/tree、从最终提交导出的干净目录完整验收以及相同 SHA 的终态 CI，再给出报告和提交链接。若有失败，只恢复本次交付，不扩展七日范围。全部核验通过后，本次一周任务完成，没有默认后续开发阶段。
